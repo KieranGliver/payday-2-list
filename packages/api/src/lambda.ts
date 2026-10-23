@@ -1,8 +1,8 @@
-import { health } from './health';
+import { resolveApiKey, resolvePlayers } from './config';
+import { getProgress } from './getProgress';
+import { createSteamClient } from './steam';
 
-/** Minimal shape of a Lambda Function URL invocation event. */
 interface FunctionUrlEvent {
-  readonly rawQueryString?: string;
   readonly requestContext?: {
     readonly http?: { readonly path?: string; readonly method?: string };
   };
@@ -14,16 +14,37 @@ interface LambdaResponse {
   readonly body: string;
 }
 
+/**
+ * Deliberately uncached.
+ *
+ * Progress should reflect a heist the moment it is finished, so every request
+ * hits Steam. Two players per request against a 100k/day key quota leaves
+ * ample headroom - 1000 page loads a day is 2000 calls, under 2% of it.
+ */
+const json = (statusCode: number, body: unknown): LambdaResponse => ({
+  statusCode,
+  headers: {
+    'content-type': 'application/json',
+    'cache-control': 'no-store',
+  },
+  body: JSON.stringify(body),
+});
+
 export const handler = async (event: FunctionUrlEvent): Promise<LambdaResponse> => {
-  const http = event.requestContext?.http;
-  const result = health({
-    path: http?.path ?? null,
-    method: http?.method ?? null,
-    query: event.rawQueryString ?? null,
-  });
-  return {
-    statusCode: 200,
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(result),
-  };
+  const path = event.requestContext?.http?.path ?? '/';
+
+  if (path.endsWith('/health')) {
+    return json(200, { ok: true, time: new Date().toISOString() });
+  }
+
+  try {
+    const apiKey = await resolveApiKey();
+    const players = resolvePlayers();
+    return json(200, await getProgress(players, createSteamClient(apiKey)));
+  } catch (cause) {
+    // Configuration and unexpected failures. Per-player Steam errors are
+    // already folded into the successful response by getProgress.
+    console.error('getProgress failed', cause);
+    return json(500, { error: 'could not read progress' });
+  }
 };

@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSteamApiKey",
+      "Effect": "Allow",
+      "Action": "ssm:GetParameter",
+      "Resource": "arn:aws:ssm:us-east-2:227415629009:parameter/pd2-tracker/dev/steam-api-key"
+    },
+    {
+      "Sid": "DecryptSteamApiKeyViaSsm",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "arn:aws:kms:us-east-2:227415629009:key/5b4a8e16-b2d8-463c-8316-8e4dd26b9d89",
+      "Condition": {
+        "StringEquals": { "kms:ViaService": "ssm.us-east-2.amazonaws.com" }
+      }
+    }
+  ]
+}

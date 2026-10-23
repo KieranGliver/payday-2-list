@@ -4,11 +4,16 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/lambda.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.mjs",
+    "build": "node build.mjs",
     "package": "npm run build && cd dist && zip -q -X -r ../lambda.zip index.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.1156.0",
+    "@pd2/shared": "^0.1.0"
   }
 }

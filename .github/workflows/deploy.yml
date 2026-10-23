@@ -5,14 +5,13 @@ on:
     branches: [master]
   workflow_dispatch:
 
-# One deploy at a time; newer pushes supersede in-flight ones.
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  id-token: write   # required to request the OIDC token
+  id-token: write
 
 jobs:
   deploy:
@@ -28,27 +27,22 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      # TEMPORARY: prints non-secret OIDC claims to diagnose the
+      # AssumeRoleWithWebIdentity denial. Never prints the token itself.
       - name: Debug OIDC claims
         run: |
-          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
-          echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+' \
-            | python3 -c "
-import sys,base64,json
-d=sys.stdin.read().strip()
-d+='='*(-len(d)%4)
-c=json.loads(base64.b64decode(d))
-for k in ('sub','aud','repository','repository_owner','ref','workflow_ref','event_name'):
-    print(f'{k:18} = {c.get(k)!r}')
-"
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+')
+          while [ $(( ${#PAYLOAD} % 4 )) -ne 0 ]; do PAYLOAD="${PAYLOAD}="; done
+          echo "$PAYLOAD" | base64 -d | jq '{sub, aud, repository, repository_owner, ref, event_name}'
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      # Content-hashed filenames, so they can cache forever.
       - name: Sync assets (immutable)
         run: |
           aws s3 sync packages/web/dist/ "s3://${{ vars.S3_BUCKET }}/" \
@@ -56,7 +50,6 @@ for k in ('sub','aud','repository','repository_owner','ref','workflow_ref','even
             --exclude index.html \
             --cache-control "public,max-age=31536000,immutable"
 
-      # The entry point must never be cached, or deploys appear to do nothing.
       - name: Upload index.html (no-cache)
         run: |
           aws s3 cp packages/web/dist/index.html "s3://${{ vars.S3_BUCKET }}/index.html" \
@@ -67,6 +60,3 @@ for k in ('sub','aud','repository','repository_owner','ref','workflow_ref','even
           aws cloudfront create-invalidation \
             --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
             --paths "/" "/index.html"
-
-      - name: Summary
-        run: echo "Deployed to https://d2w66v72qyi29x.cloudfront.net/" >> $GITHUB_STEP_SUMMARY

@@ -10,7 +10,7 @@
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:KieranGliver/payday-2-list:ref:refs/heads/master"
+          "token.actions.githubusercontent.com:sub": "repo:KieranGliver@23320961/payday-2-list@1431616572:ref:refs/heads/master"
         }
       }
     }

@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListSiteBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::pd2-tracker-dev-227415629009-us-east-2-an"
+    },
+    {
+      "Sid": "WriteSiteObjects",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::pd2-tracker-dev-227415629009-us-east-2-an/*"
+    },
+    {
+      "Sid": "InvalidateDistribution",
+      "Effect": "Allow",
+      "Action": "cloudfront:CreateInvalidation",
+      "Resource": "arn:aws:cloudfront::227415629009:distribution/EG8NVRFZ6H85A"
+    }
+  ]
+}

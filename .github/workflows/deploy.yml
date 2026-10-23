@@ -1,0 +1,57 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# One deploy at a time; newer pushes supersede in-flight ones.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write   # required to request the OIDC token
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Content-hashed filenames, so they can cache forever.
+      - name: Sync assets (immutable)
+        run: |
+          aws s3 sync packages/web/dist/ "s3://${{ vars.S3_BUCKET }}/" \
+            --delete \
+            --exclude index.html \
+            --cache-control "public,max-age=31536000,immutable"
+
+      # The entry point must never be cached, or deploys appear to do nothing.
+      - name: Upload index.html (no-cache)
+        run: |
+          aws s3 cp packages/web/dist/index.html "s3://${{ vars.S3_BUCKET }}/index.html" \
+            --cache-control "no-cache"
+
+      - name: Invalidate entry point
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/" "/index.html"
+
+      - name: Summary
+        run: echo "Deployed to https://d2w66v72qyi29x.cloudfront.net/" >> $GITHUB_STEP_SUMMARY

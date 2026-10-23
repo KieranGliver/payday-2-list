@@ -3,11 +3,15 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm run dev -w @pd2/web",
     "build": "npm run build -w @pd2/web",
     "preview": "npm run preview -w @pd2/web",
-    "lint": "npm run lint -w @pd2/web"
+    "lint": "npm run lint -w @pd2/web",
+    "sync:steam": "node scripts/sync-steam.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   }
 }

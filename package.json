@@ -1,0 +1,13 @@
+{
+  "name": "payday-2-list",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @pd2/web",
+    "build": "npm run build -w @pd2/web",
+    "preview": "npm run preview -w @pd2/web",
+    "lint": "npm run lint -w @pd2/web"
+  }
+}

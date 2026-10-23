@@ -1,0 +1,14 @@
+{
+  "name": "@pd2/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/lambda.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/index.mjs",
+    "package": "npm run build && cd dist && zip -q -X -r ../lambda.zip index.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

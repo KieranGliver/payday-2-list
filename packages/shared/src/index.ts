@@ -3,6 +3,7 @@ export type { PlayerProgress, ProgressResult } from './api.js';
 export { STEAM_HEISTS, type HeistId } from './generated/steam.js';
 export { RATINGS } from './curated/ratings.js';
 export {
+  iconUrl,
   CONTRACTORS,
   APPROACHES,
   DIFFICULTIES,

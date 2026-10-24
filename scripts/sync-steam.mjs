@@ -33,6 +33,14 @@ const RATINGS = new URL('../packages/shared/src/curated/ratings.ts', import.meta
 const isOneDown = (description) =>
   description.includes('Death Sentence') && description.includes('One Down');
 
+/**
+ * Steam serves the same icon from several CDN hosts (akamai, fastly,
+ * cloudflare) with byte-identical content, and the two schema sources return
+ * different hosts. Only the 40-char hash is stable, so that is what the
+ * catalog stores; the URL is rebuilt in the app.
+ */
+const iconHash = (url) => /([0-9a-f]{40})\.jpg/.exec(url ?? '')?.[1] ?? null;
+
 /** Achievements for completing a whole contractor's set, not a single heist. */
 const isMeta = (name) => name.startsWith('all ');
 
@@ -50,7 +58,13 @@ async function fetchSchema() {
     const data = await fetchJson(url);
     const list = data?.game?.availableGameStats?.achievements ?? [];
     console.log(`schema: GetSchemaForGame -> ${list.length} achievements`);
-    return list.map((a) => ({ id: a.name, achievement: a.displayName, description: a.description ?? '' }));
+    return list.map((a) => ({
+      id: a.name,
+      achievement: a.displayName,
+      description: a.description ?? '',
+      icon: iconHash(a.icon),
+      iconGray: iconHash(a.icongray),
+    }));
   }
 
   console.log('schema: no STEAM_API_KEY, parsing public community page');
@@ -59,9 +73,18 @@ async function fetchSchema() {
   });
   if (!res.ok) throw new Error(`${res.status} fetching community achievements page`);
   const html = (await res.text()).replaceAll('\\"', '"');
-  const re = /\{"internal_key":\d+,"api_name":"(.*?)","name":"(.*?)","description":"(.*?)"/g;
+  const re =
+    /\{"internal_key":\d+,"api_name":"(.*?)","name":"(.*?)","description":"(.*?)","hidden":\w+,"archived":\w+,"icon_achieved":"(.*?)","icon_unachieved":"(.*?)"/g;
   const out = [];
-  for (const m of html.matchAll(re)) out.push({ id: m[1], achievement: m[2], description: m[3] });
+  for (const m of html.matchAll(re)) {
+    out.push({
+      id: m[1],
+      achievement: m[2],
+      description: m[3],
+      icon: iconHash(m[4]),
+      iconGray: iconHash(m[5]),
+    });
+  }
   console.log(`schema: community page -> ${out.length} achievements`);
   return out;
 }
@@ -109,7 +132,15 @@ for (const a of schema) {
   if (!heist) throw new Error(`could not parse heist name from: ${a.description}`);
   if (isMeta(heist)) { skippedMeta.push(heist); continue; }
   if (!(a.id in pct)) throw new Error(`no global percentage for ${a.id}`);
-  heists.push({ id: a.id, heist, achievement: a.achievement, globalPct: pct[a.id] });
+  if (!a.icon || !a.iconGray) throw new Error(`missing icon hash for ${a.id}`);
+  heists.push({
+    id: a.id,
+    heist,
+    achievement: a.achievement,
+    globalPct: pct[a.id],
+    icon: a.icon,
+    iconGray: a.iconGray,
+  });
 }
 
 heists.sort((a, b) => a.heist.localeCompare(b.heist));
@@ -122,7 +153,7 @@ const zeroed = heists.filter((h) => h.globalPct === 0);
 const rows = heists
   .map(
     (h) =>
-      `  { id: ${JSON.stringify(h.id)}, heist: ${JSON.stringify(h.heist)}, achievement: ${JSON.stringify(h.achievement)}, globalPct: ${h.globalPct} },`,
+      `  { id: ${JSON.stringify(h.id)}, heist: ${JSON.stringify(h.heist)}, achievement: ${JSON.stringify(h.achievement)}, globalPct: ${h.globalPct}, icon: ${JSON.stringify(h.icon)}, iconGray: ${JSON.stringify(h.iconGray)} },`,
   )
   .join('\n');
 

@@ -128,26 +128,66 @@
     @apply font-sans;
     }
 }
-/* Data-visualisation colours.
+/* ---------------------------------------------------------------------------
+ * Payday 2 theme.
  *
- * Meter ramp: a single blue hue, light -> dark, as required for an ordinal
- * ramp. Steps chosen by running the dataviz validator against this app's
- * ACTUAL surfaces (#ffffff light, #0a0a0a dark) rather than the reference
- * palette's, because the track must clear 2:1 against the real background:
- *   light track #86b6ef = 2.11:1   (step 200 failed at 1.79:1)
- *   dark  track #184f95 = 2.44:1
+ * Always dark: warm near-black surfaces, gold accent, tight corners. Declared
+ * on both :root and .dark so it applies regardless of any theme class, and
+ * placed after shadcn's own token blocks so it wins the cascade.
  *
- * --status-good is the reserved status hue, never a series colour. It is
- * always paired with an icon and a label so completion never depends on
- * colour alone (3.35:1 light, 5.90:1 dark).
- */
-:root {
-    --meter-track: #86b6ef;
-    --meter-fill: #2a78d6;
-    --status-good: #0ca30c;
-}
-
+ * Text contrast measured against the #141210 surface:
+ *   foreground #f5f1ea 16.60:1 · muted #a09688 6.42:1 · gold #ffc14d 11.56:1
+ * ------------------------------------------------------------------------ */
+:root,
 .dark {
-    --meter-track: #184f95;
-    --meter-fill: #3987e5;
+    --background: #141210;
+    --foreground: #f5f1ea;
+    --card: #1c1916;
+    --card-foreground: #f5f1ea;
+    --popover: #1c1916;
+    --popover-foreground: #f5f1ea;
+    --primary: #ffc14d;
+    --primary-foreground: #141210;
+    --secondary: #241f1a;
+    --secondary-foreground: #f5f1ea;
+    --muted: #211d19;
+    --muted-foreground: #a09688;
+    --accent: #241f1a;
+    --accent-foreground: #ffc14d;
+    --destructive: #d03b3b;
+    --border: #2e2823;
+    --input: #2e2823;
+    --ring: #ffc14d;
+    --radius: 0.25rem;
+
+    /* Meter ramp: one amber hue, dark -> bright. Validated as an ordinal ramp
+     * against the real #141210 surface - the track clears the 2:1 floor at
+     * 2.79:1. Amber doubles as the theme accent, so the hero reads as part of
+     * the UI rather than a bolted-on chart colour. */
+    --meter-track: #7a5510;
+    --meter-fill: #ffc14d;
+
+    /* Approach: three categorical hues, validated --pairs all on this surface
+     * (worst CVD dE 9.4, worst normal-vision dE 20.9, all >= 3:1). Rendered as
+     * outline badges. */
+    --approach-loud: #d95926;
+    --approach-stealth: #3987e5;
+    --approach-both: #199e70;
+
+    /* Difficulty is severity, so it uses the reserved status palette rather
+     * than a fourth series hue. Rendered as tinted badges - a different shape
+     * from the approach outlines, so the two encodings do not compete. Every
+     * badge carries its text label, so hue never has to carry meaning alone.
+     * EASY is deliberately NOT status-green: the approach badge already uses
+     * an aqua-green, and two greens side by side in adjacent columns read as
+     * related when they are not. "Easy" is the unremarkable case, so it gets
+     * muted ink and the colour budget goes to the two that matter.
+     * Contrast vs surface: 6.42:1 / 10.19:1 / 3.89:1. */
+    --difficulty-easy: #a09688;
+    --difficulty-medium: #fab219;
+    --difficulty-hard: #d03b3b;
+
+    /* Reserved status hue for the completion ticks, always with an icon and
+     * screen-reader text. */
+    --status-good: #0ca30c;
 }

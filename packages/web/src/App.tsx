@@ -44,7 +44,9 @@ export default function App() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <header className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Payday 2 — One Down</h1>
+            <h1 className="text-2xl font-bold tracking-wide uppercase">
+              Payday 2 <span className="text-primary">One Down</span>
+            </h1>
             <p className="text-muted-foreground text-sm">
               {state.status === 'ready' ? (
                 <>Synced from Steam {new Date(state.data.fetchedAt).toLocaleTimeString()}</>

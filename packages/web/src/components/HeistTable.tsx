@@ -1,4 +1,4 @@
-import type { Heist, PlayerProgress } from '@pd2/shared';
+import { iconUrl, type Heist, type PlayerProgress } from '@pd2/shared';
 import { ArrowDown, ArrowUp, Check, ChevronsUpDown, Minus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -75,11 +75,22 @@ function Cleared({ at }: { at: number | undefined }) {
   );
 }
 
-const difficultyTone: Record<string, string> = {
-  EASY: 'text-muted-foreground',
-  MEDIUM: 'text-foreground',
-  HARD: 'text-foreground font-medium',
+/** Categorical hues, validated --pairs all against the theme surface. */
+const approachColor: Record<string, string> = {
+  LOUD: 'var(--approach-loud)',
+  STEALTH: 'var(--approach-stealth)',
+  BOTH: 'var(--approach-both)',
 };
+
+/** Severity, so the reserved status palette rather than a fourth series hue. */
+const difficultyColor: Record<string, string> = {
+  EASY: 'var(--difficulty-easy)',
+  MEDIUM: 'var(--difficulty-medium)',
+  HARD: 'var(--difficulty-hard)',
+};
+
+const clearedByBoth = (heist: Heist, players: readonly PlayerProgress[]) =>
+  players.length > 0 && players.every((p) => heist.id in p.unlocked);
 
 export function HeistTable({ heists, players, sort, onSort }: Props) {
   return (
@@ -92,7 +103,7 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
       <Table className="min-w-max">
         <TableHeader>
           <TableRow>
-            <TableHead className="bg-background sticky left-0 z-10 min-w-44 border-r">
+            <TableHead className="bg-background sticky left-0 z-10 min-w-60 border-r">
               <SortButton label="Heist" columnKey="heist" sort={sort} onSort={onSort} />
             </TableHead>
             <TableHead className="min-w-32">
@@ -130,14 +141,45 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
           {heists.map((h) => (
             <TableRow key={h.id}>
               <TableCell className="bg-background sticky left-0 z-10 border-r font-medium">
-                {h.heist}
+                <div className="flex items-center gap-2.5">
+                  {/* Decorative: the heist name sits right beside it, so an alt
+                      text would just be read out twice. Colour art once both
+                      players have cleared it, greyed until then - the same
+                      thing Steam does, and it matches the headline metric. */}
+                  <img
+                    src={iconUrl(clearedByBoth(h, players) ? h.icon : h.iconGray)}
+                    alt=""
+                    width={32}
+                    height={32}
+                    loading="lazy"
+                    className="size-8 shrink-0 rounded-sm"
+                  />
+                  <span>{h.heist}</span>
+                </div>
               </TableCell>
               <TableCell className="text-muted-foreground">{h.contractor}</TableCell>
               <TableCell>
-                <Badge variant="outline">{h.approach}</Badge>
+                <Badge
+                  variant="outline"
+                  style={{
+                    color: approachColor[h.approach],
+                    borderColor: approachColor[h.approach],
+                  }}
+                >
+                  {h.approach}
+                </Badge>
               </TableCell>
-              <TableCell className={difficultyTone[h.perceivedDifficulty]}>
-                {h.perceivedDifficulty}
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  style={{
+                    color: difficultyColor[h.perceivedDifficulty],
+                    borderColor: 'transparent',
+                    backgroundColor: `color-mix(in srgb, ${difficultyColor[h.perceivedDifficulty]} 16%, transparent)`,
+                  }}
+                >
+                  {h.perceivedDifficulty}
+                </Badge>
               </TableCell>
               <TableCell className="text-muted-foreground text-right tabular-nums">
                 {h.globalPct.toFixed(1)}%

@@ -21,7 +21,7 @@ export function ProgressMeter({ both, total, players }: Props) {
 
   return (
     <section aria-labelledby="progress-heading">
-      <h2 id="progress-heading" className="text-muted-foreground text-sm font-medium">
+      <h2 id="progress-heading" className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
         Cleared together
       </h2>
 

@@ -27,7 +27,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
   return (
     <section aria-label="Filters" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <label className="flex flex-col gap-1">
-        <span className="text-muted-foreground text-xs font-medium">Contractor</span>
+        <span className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">Contractor</span>
         <select
           className={field}
           value={value.contractor}
@@ -43,7 +43,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-muted-foreground text-xs font-medium">Approach</span>
+        <span className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">Approach</span>
         <select
           className={field}
           value={value.approach}
@@ -59,7 +59,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-muted-foreground text-xs font-medium">Difficulty</span>
+        <span className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">Difficulty</span>
         <select
           className={field}
           value={value.difficulty}
@@ -75,7 +75,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-muted-foreground text-xs font-medium">Completion</span>
+        <span className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">Completion</span>
         <select
           className={field}
           value={value.completion}

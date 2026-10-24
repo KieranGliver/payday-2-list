@@ -30,7 +30,15 @@ export interface SteamHeist {
   readonly achievement: string;
   /** Percentage of all Payday 2 owners who have this achievement. */
   readonly globalPct: number;
+  /** Steam CDN hash for the colour achievement icon (64x64 jpeg). */
+  readonly icon: string;
+  /** Steam CDN hash for the greyed-out variant. */
+  readonly iconGray: string;
 }
+
+/** Builds a Steam CDN URL from an icon hash stored in the catalog. */
+export const iconUrl = (hash: string): string =>
+  `https://shared.fastly.steamstatic.com/community_assets/images/apps/218620/${hash}.jpg`;
 
 /** Our judgements. Hand-maintained; never regenerated. */
 export interface Rating {

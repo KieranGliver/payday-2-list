@@ -39,6 +39,13 @@ export interface Badge {
 	 */
 	readonly done: number;
 	readonly of: number;
+	/**
+	 * The one that spans every contractor rather than a single set.
+	 *
+	 * Flagged here rather than matched by id in the UI, so the display does not
+	 * hardcode a Steam achievement id.
+	 */
+	readonly isEverything: boolean;
 }
 
 /** Resolves each badge against the current player data. */
@@ -86,6 +93,7 @@ export function resolveBadges(
 			mismatch,
 			done,
 			of: ours.length,
+			isEverything: contractor === null,
 		};
 	});
 }

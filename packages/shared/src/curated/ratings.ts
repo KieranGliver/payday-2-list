@@ -32,6 +32,10 @@ export const RATINGS: Record<HeistId, Rating> = {
   axe_25:   { contractor: 'Bain', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // Transport: Underpass
   auc_8:    { contractor: 'Bain', approach: 'BOTH', perceivedDifficulty: 'HARD' }, // Under the Hammer
 
+  // --- Blaine Keegan ---
+  deep_8:   { contractor: 'Blaine Keegan', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // Crude Awakening
+  corp_8:   { contractor: 'Blaine Keegan', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Hostile Takeover
+
   // --- Classic ---
   axe_51:   { contractor: 'Classic', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Counterfeit
   dah_7:    { contractor: 'Classic', approach: 'STEALTH', perceivedDifficulty: 'EASY' }, // Diamond Heist
@@ -48,11 +52,24 @@ export const RATINGS: Record<HeistId, Rating> = {
   axe_46:   { contractor: 'Events', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // Lab Rats
   orange_3: { contractor: 'Events', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Prison Nightmare
   axe_666:  { contractor: 'Events', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Safe House Nightmare
+  trk_sa_6: { contractor: 'Events', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Safe House Raid
+
+  // --- Gemma McShay ---
+  trai_8:   { contractor: 'Gemma McShay', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Lost In Transit
+  ranc_8:   { contractor: 'Gemma McShay', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Midland Ranch
 
   // --- Hector ---
   axe_9:    { contractor: 'Hector', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // Firestarter
   axe_7:    { contractor: 'Hector', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // Rats
   axe_5:    { contractor: 'Hector', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Watchdogs
+
+  // --- Jimmy ---
+  axe_56:   { contractor: 'Jimmy', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Boiling Point
+  axe_53:   { contractor: 'Jimmy', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Murky Station
+
+  // --- Jiu Feng ---
+  chas_8:   { contractor: 'Jiu Feng', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Dragon Heist
+  sand_8:   { contractor: 'Jiu Feng', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Ukrainian Prisoner
 
   // --- Locke ---
   wwh_7:    { contractor: 'Locke', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Alaskan Deal
@@ -68,10 +85,17 @@ export const RATINGS: Record<HeistId, Rating> = {
   sah_8:    { contractor: 'Locke', approach: 'STEALTH', perceivedDifficulty: 'MEDIUM' }, // Shacklethorne Auction
   vit_8:    { contractor: 'Locke', approach: 'BOTH', perceivedDifficulty: 'MEDIUM' }, // The White House
 
+  // --- Shayu ---
+  pent_8:   { contractor: 'Shayu', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Mountain Master
+
   // --- The Butcher ---
   friend_3: { contractor: 'The Butcher', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Scarface Mansion
   axe_61:   { contractor: 'The Butcher', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // The Bomb: Dockyard
   axe_60:   { contractor: 'The Butcher', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // The Bomb: Forest
+
+  // --- The Continental ---
+  spa_3:    { contractor: 'The Continental', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Brooklyn 10-10
+  fish_3:   { contractor: 'The Continental', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // The Yacht Heist
 
   // --- The Dentist ---
   axe_44:   { contractor: 'The Dentist', approach: 'BOTH', perceivedDifficulty: 'MEDIUM' }, // Golden Grin Casino
@@ -101,18 +125,4 @@ export const RATINGS: Record<HeistId, Rating> = {
   moon_3:   { contractor: 'Vlad', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Stealing Xmas
   axe_1:    { contractor: 'Vlad', approach: 'BOTH', perceivedDifficulty: 'MEDIUM' }, // Ukrainian Job
   axe_59:   { contractor: 'Vlad', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // White Xmas
-
-  // --- Other ---
-  axe_56:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Boiling Point
-  spa_3:    { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Brooklyn 10-10
-  deep_8:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'HARD' }, // Crude Awakening
-  chas_8:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Dragon Heist
-  corp_8:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Hostile Takeover
-  trai_8:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Lost In Transit
-  ranc_8:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Midland Ranch
-  pent_8:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Mountain Master
-  axe_53:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Murky Station
-  trk_sa_6: { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Safe House Raid
-  fish_3:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // The Yacht Heist
-  sand_8:   { contractor: 'Other', approach: 'LOUD', perceivedDifficulty: 'MEDIUM' }, // Ukrainian Prisoner
 };

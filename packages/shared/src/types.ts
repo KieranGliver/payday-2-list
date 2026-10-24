@@ -1,15 +1,20 @@
 /** Contractors as grouped in the tracker. */
 export const CONTRACTORS = [
   'Bain',
+  'Blaine Keegan',
   'Classic',
   'Events',
+  'Gemma McShay',
   'Hector',
+  'Jimmy',
+  'Jiu Feng',
   'Locke',
+  'Shayu',
   'The Butcher',
+  'The Continental',
   'The Dentist',
   'The Elephant',
   'Vlad',
-  'Other',
 ] as const;
 export type Contractor = (typeof CONTRACTORS)[number];
 

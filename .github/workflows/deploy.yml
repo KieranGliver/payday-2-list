@@ -1,7 +1,12 @@
 name: Deploy
 
 on:
-  push:
+  # Triggered by CI finishing, not by the push itself. Previously both ran in
+  # parallel, so a broken commit deployed while CI was still going red beside
+  # it. Now a failing CI simply never reaches this workflow.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [master]
   workflow_dispatch:
 
@@ -16,8 +21,16 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # workflow_run fires on failure too, so the conclusion must be checked.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
+      # workflow_run checks out the default branch HEAD by default, not the
+      # commit CI actually verified. Pin it to that commit.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - uses: actions/setup-node@v4
         with:

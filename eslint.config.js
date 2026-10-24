@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
@@ -7,6 +9,19 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+
+/**
+ * Read React's version from the installed package rather than hardcoding it.
+ *
+ * eslint-plugin-react's own 'detect' setting crashes on eslint 10 with
+ * "contextOrFilename.getFilename is not a function" - its detection path calls
+ * an API eslint 10 removed. A hardcoded version avoids the crash but goes
+ * stale the moment React is upgraded, silently applying the wrong era of rules
+ * to react/no-deprecated and friends. Reading package.json gets both.
+ */
+const reactVersion = createRequire(import.meta.url)(
+	'react/package.json',
+).version;
 
 export default defineConfig([
 	globalIgnores([
@@ -35,11 +50,6 @@ export default defineConfig([
 	// Both plugins cap their peer range at eslint 9 and we are on 10, so they
 	// are installed with --legacy-peer-deps.
 	//
-	// react.version MUST stay pinned rather than 'detect'. On eslint 10,
-	// eslint-plugin-react's version auto-detection crashes every lint run with
-	// "contextOrFilename.getFilename is not a function" - its detect path uses
-	// an API eslint 10 removed. Pinning skips that code path entirely. Revisit
-	// when the plugin ships eslint 10 support.
 	{
 		files: ['packages/web/src/**/*.{ts,tsx}'],
 		extends: [
@@ -50,7 +60,7 @@ export default defineConfig([
 			reactRefresh.configs.vite,
 		],
 		languageOptions: { globals: globals.browser },
-		settings: { react: { version: '19.3' } }, // see note above - do not use 'detect'
+		settings: { react: { version: reactVersion } },
 		rules: {
 			// TypeScript checks props; prop-types is redundant noise here.
 			'react/prop-types': 'off',

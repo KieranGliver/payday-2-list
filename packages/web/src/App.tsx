@@ -140,7 +140,13 @@ export default function App() {
 					/>
 				) : null}
 
-				<BadgeWall badges={badges} />
+				<BadgeWall
+					badges={badges}
+					activeContractor={filters.contractor}
+					onSelectContractor={(contractor) =>
+						setFilters((f) => ({ ...f, contractor }))
+					}
+				/>
 
 				<Filters
 					value={filters}

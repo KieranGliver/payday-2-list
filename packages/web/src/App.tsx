@@ -11,7 +11,6 @@ import { BadgeWall } from '@/components/BadgeWall';
 import { Filters } from '@/components/Filters';
 import { VaultHero } from '@/components/VaultHero';
 import { HeistTable } from '@/components/HeistTable';
-import { ProgressMeter } from '@/components/ProgressMeter';
 import { Button } from '@/components/ui/button';
 import { applyFilters, INITIAL_FILTERS, type FilterState } from '@/lib/filters';
 import {
@@ -136,15 +135,10 @@ export default function App() {
 						badge={everything}
 						done={both}
 						total={total}
+						players={players}
+						unreadable={unreadable.length}
 					/>
 				) : null}
-
-				<ProgressMeter
-					both={both}
-					total={total}
-					players={players}
-					unreadable={unreadable.length}
-				/>
 
 				<BadgeWall badges={badges} />
 

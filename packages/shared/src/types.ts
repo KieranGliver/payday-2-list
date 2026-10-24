@@ -55,6 +55,8 @@ export const iconUrl = (hash: string): string =>
 export interface MetaAchievement {
 	readonly id: string;
 	readonly achievement: string;
+	/** Steam's own wording, shown as the vault subtitle. */
+	readonly description: string;
 	/** The description's phrase, e.g. "all of Vlad's contracts". */
 	readonly scope: string;
 	readonly globalPct: number;

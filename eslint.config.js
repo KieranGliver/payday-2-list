@@ -1,5 +1,7 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
+import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import { defineConfig, globalIgnores } from 'eslint/config';
@@ -24,10 +26,35 @@ export default defineConfig([
 	},
 
 	// The browser half.
+	//
+	// react-hooks covers hook rules and react-refresh covers fast-refresh
+	// safety, but neither looks at JSX itself: a missing list key, an <img>
+	// with no alt, a click handler on a non-interactive element and a
+	// target="_blank" without rel all passed before these two were added.
+	//
+	// Both plugins cap their peer range at eslint 9 and we are on 10, so they
+	// are installed with --legacy-peer-deps.
+	//
+	// react.version MUST stay pinned rather than 'detect'. On eslint 10,
+	// eslint-plugin-react's version auto-detection crashes every lint run with
+	// "contextOrFilename.getFilename is not a function" - its detect path uses
+	// an API eslint 10 removed. Pinning skips that code path entirely. Revisit
+	// when the plugin ships eslint 10 support.
 	{
 		files: ['packages/web/src/**/*.{ts,tsx}'],
-		extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
+		extends: [
+			react.configs.flat.recommended,
+			react.configs.flat['jsx-runtime'],
+			jsxA11y.flatConfigs.recommended,
+			reactHooks.configs.flat.recommended,
+			reactRefresh.configs.vite,
+		],
 		languageOptions: { globals: globals.browser },
+		settings: { react: { version: '19.3' } }, // see note above - do not use 'detect'
+		rules: {
+			// TypeScript checks props; prop-types is redundant noise here.
+			'react/prop-types': 'off',
+		},
 	},
 
 	// Things that run in node: the Lambda handler, the generator, vite config.

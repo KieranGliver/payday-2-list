@@ -1,9 +1,9 @@
 import type { PlayerProgress } from '@pd2/shared';
 
 interface Props {
-  readonly both: number;
-  readonly total: number;
-  readonly players: readonly PlayerProgress[];
+	readonly both: number;
+	readonly total: number;
+	readonly players: readonly PlayerProgress[];
 }
 
 /**
@@ -17,52 +17,58 @@ interface Props {
  * is the number actually being tracked.
  */
 export function ProgressMeter({ both, total, players }: Props) {
-  const pct = total === 0 ? 0 : (both / total) * 100;
+	const pct = total === 0 ? 0 : (both / total) * 100;
 
-  return (
-    <section aria-labelledby="progress-heading">
-      <h2 id="progress-heading" className="text-muted-foreground text-xs font-medium tracking-[0.18em] uppercase">
-        Cleared together
-      </h2>
+	return (
+		<section aria-labelledby="progress-heading">
+			<h2
+				id="progress-heading"
+				className="text-xs font-medium tracking-[0.18em] text-muted-foreground uppercase"
+			>
+				Cleared together
+			</h2>
 
-      {/* Hero figure: proportional figures, not tabular - tabular-nums makes a
+			{/* Hero figure: proportional figures, not tabular - tabular-nums makes a
           large number look loose at display sizes. */}
-      <p className="mt-1 flex items-baseline gap-2">
-        <span className="text-5xl font-semibold tracking-tight">{both}</span>
-        <span className="text-muted-foreground text-xl">/ {total}</span>
-        <span className="text-muted-foreground ml-auto text-sm tabular-nums">
-          {pct.toFixed(1)}%
-        </span>
-      </p>
+			<p className="mt-1 flex items-baseline gap-2">
+				<span className="text-5xl font-semibold tracking-tight">{both}</span>
+				<span className="text-xl text-muted-foreground">/ {total}</span>
+				<span className="ml-auto text-sm text-muted-foreground tabular-nums">
+					{pct.toFixed(1)}%
+				</span>
+			</p>
 
-      <div
-        className="mt-3 h-3 w-full overflow-hidden rounded-full"
-        style={{ backgroundColor: 'var(--meter-track)' }}
-        role="meter"
-        aria-valuenow={both}
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-label={`${both} of ${total} heists cleared by both players`}
-      >
-        <div
-          className="h-full rounded-full transition-[width] duration-500"
-          style={{ width: `${pct}%`, backgroundColor: 'var(--meter-fill)' }}
-        />
-      </div>
+			<div
+				className="mt-3 h-3 w-full overflow-hidden rounded-full"
+				style={{ backgroundColor: 'var(--meter-track)' }}
+				role="meter"
+				aria-valuenow={both}
+				aria-valuemin={0}
+				aria-valuemax={total}
+				aria-label={`${both} of ${total} heists cleared by both players`}
+			>
+				<div
+					className="h-full rounded-full transition-[width] duration-500"
+					style={{ width: `${pct}%`, backgroundColor: 'var(--meter-fill)' }}
+				/>
+			</div>
 
-      <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-        {players.map((p) => (
-          <div key={p.steamId} className="flex items-baseline gap-2">
-            <dt className="text-muted-foreground">{p.name}</dt>
-            <dd className="font-medium tabular-nums">
-              {p.completed}/{total}
-            </dd>
-            {p.error ? (
-              <dd className="text-destructive text-xs">({p.error})</dd>
-            ) : null}
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
+			<dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+				{players.map((p) => (
+					<div
+						key={p.steamId}
+						className="flex items-baseline gap-2"
+					>
+						<dt className="text-muted-foreground">{p.name}</dt>
+						<dd className="font-medium tabular-nums">
+							{p.completed}/{total}
+						</dd>
+						{p.error ? (
+							<dd className="text-xs text-destructive">({p.error})</dd>
+						) : null}
+					</div>
+				))}
+			</dl>
+		</section>
+	);
 }

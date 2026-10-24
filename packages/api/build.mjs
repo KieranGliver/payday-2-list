@@ -8,19 +8,19 @@ import { build } from 'esbuild';
  * reinstates a working `require` via createRequire so those calls resolve.
  */
 await build({
-  entryPoints: ['src/lambda.ts'],
-  outfile: 'dist/index.mjs',
-  bundle: true,
-  platform: 'node',
-  target: 'node22',
-  format: 'esm',
-  minify: true,
-  sourcemap: false,
-  banner: {
-    js: [
-      "import { createRequire as __createRequire } from 'node:module';",
-      'const require = __createRequire(import.meta.url);',
-    ].join('\n'),
-  },
-  logLevel: 'info',
+	entryPoints: ['src/lambda.ts'],
+	outfile: 'dist/index.mjs',
+	bundle: true,
+	platform: 'node',
+	target: 'node22',
+	format: 'esm',
+	minify: true,
+	sourcemap: false,
+	banner: {
+		js: [
+			"import { createRequire as __createRequire } from 'node:module';",
+			'const require = __createRequire(import.meta.url);',
+		].join('\n'),
+	},
+	logLevel: 'info',
 });

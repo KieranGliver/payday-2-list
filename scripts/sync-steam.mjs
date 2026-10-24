@@ -17,8 +17,14 @@
 import { writeFile, readFile } from 'node:fs/promises';
 
 const APPID = 218620;
-const OUT = new URL('../packages/shared/src/generated/steam.ts', import.meta.url);
-const RATINGS = new URL('../packages/shared/src/curated/ratings.ts', import.meta.url);
+const OUT = new URL(
+	'../packages/shared/src/generated/steam.ts',
+	import.meta.url,
+);
+const RATINGS = new URL(
+	'../packages/shared/src/curated/ratings.ts',
+	import.meta.url,
+);
 
 /**
  * Marks a One Down achievement.
@@ -31,7 +37,7 @@ const RATINGS = new URL('../packages/shared/src/curated/ratings.ts', import.meta
  * tier, correctly excluded) and none mention One Down alone.
  */
 const isOneDown = (description) =>
-  description.includes('Death Sentence') && description.includes('One Down');
+	description.includes('Death Sentence') && description.includes('One Down');
 
 /**
  * Steam serves the same icon from several CDN hosts (akamai, fastly,
@@ -45,57 +51,61 @@ const iconHash = (url) => /([0-9a-f]{40})\.jpg/.exec(url ?? '')?.[1] ?? null;
 const isMeta = (name) => name.startsWith('all ');
 
 async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
-  return res.json();
+	const res = await fetch(url);
+	if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+	return res.json();
 }
 
 /** [{ id, achievement, description }] */
 async function fetchSchema() {
-  const key = process.env.STEAM_API_KEY;
-  if (key) {
-    const url = `https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=${key}&appid=${APPID}`;
-    const data = await fetchJson(url);
-    const list = data?.game?.availableGameStats?.achievements ?? [];
-    console.log(`schema: GetSchemaForGame -> ${list.length} achievements`);
-    return list.map((a) => ({
-      id: a.name,
-      achievement: a.displayName,
-      description: a.description ?? '',
-      icon: iconHash(a.icon),
-      iconGray: iconHash(a.icongray),
-    }));
-  }
+	const key = process.env.STEAM_API_KEY;
+	if (key) {
+		const url = `https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/?key=${key}&appid=${APPID}`;
+		const data = await fetchJson(url);
+		const list = data?.game?.availableGameStats?.achievements ?? [];
+		console.log(`schema: GetSchemaForGame -> ${list.length} achievements`);
+		return list.map((a) => ({
+			id: a.name,
+			achievement: a.displayName,
+			description: a.description ?? '',
+			icon: iconHash(a.icon),
+			iconGray: iconHash(a.icongray),
+		}));
+	}
 
-  console.log('schema: no STEAM_API_KEY, parsing public community page');
-  const res = await fetch(`https://steamcommunity.com/stats/${APPID}/achievements/`, {
-    headers: { 'user-agent': 'Mozilla/5.0' },
-  });
-  if (!res.ok) throw new Error(`${res.status} fetching community achievements page`);
-  const html = (await res.text()).replaceAll('\\"', '"');
-  const re =
-    /\{"internal_key":\d+,"api_name":"(.*?)","name":"(.*?)","description":"(.*?)","hidden":\w+,"archived":\w+,"icon_achieved":"(.*?)","icon_unachieved":"(.*?)"/g;
-  const out = [];
-  for (const m of html.matchAll(re)) {
-    out.push({
-      id: m[1],
-      achievement: m[2],
-      description: m[3],
-      icon: iconHash(m[4]),
-      iconGray: iconHash(m[5]),
-    });
-  }
-  console.log(`schema: community page -> ${out.length} achievements`);
-  return out;
+	console.log('schema: no STEAM_API_KEY, parsing public community page');
+	const res = await fetch(
+		`https://steamcommunity.com/stats/${APPID}/achievements/`,
+		{
+			headers: { 'user-agent': 'Mozilla/5.0' },
+		},
+	);
+	if (!res.ok)
+		throw new Error(`${res.status} fetching community achievements page`);
+	const html = (await res.text()).replaceAll('\\"', '"');
+	const re =
+		/\{"internal_key":\d+,"api_name":"(.*?)","name":"(.*?)","description":"(.*?)","hidden":\w+,"archived":\w+,"icon_achieved":"(.*?)","icon_unachieved":"(.*?)"/g;
+	const out = [];
+	for (const m of html.matchAll(re)) {
+		out.push({
+			id: m[1],
+			achievement: m[2],
+			description: m[3],
+			icon: iconHash(m[4]),
+			iconGray: iconHash(m[5]),
+		});
+	}
+	console.log(`schema: community page -> ${out.length} achievements`);
+	return out;
 }
 
 /** { [api_name]: percent } */
 async function fetchGlobalPct() {
-  const url = `https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/?gameid=${APPID}`;
-  const data = await fetchJson(url);
-  const list = data?.achievementpercentages?.achievements ?? [];
-  console.log(`global percentages: ${list.length} achievements`);
-  return Object.fromEntries(list.map((a) => [a.name, Number(a.percent)]));
+	const url = `https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/?gameid=${APPID}`;
+	const data = await fetchJson(url);
+	const list = data?.achievementpercentages?.achievements ?? [];
+	console.log(`global percentages: ${list.length} achievements`);
+	return Object.fromEntries(list.map((a) => [a.name, Number(a.percent)]));
 }
 
 /**
@@ -107,18 +117,18 @@ async function fetchGlobalPct() {
  * "Heist" were stripped too.
  */
 function parseHeistName(description) {
-  const m = /^Complete (.+?) on the Death Sentence/i.exec(description.trim());
-  if (!m) return null;
-  return m[1].replace(/^the /, '').replace(/ job$/, '').trim();
+	const m = /^Complete (.+?) on the Death Sentence/i.exec(description.trim());
+	if (!m) return null;
+	return m[1].replace(/^the /, '').replace(/ job$/, '').trim();
 }
 
 async function existingRatingIds() {
-  try {
-    const src = await readFile(RATINGS, 'utf8');
-    return new Set([...src.matchAll(/^\t([A-Za-z0-9_]+):/gm)].map((m) => m[1]));
-  } catch {
-    return null;
-  }
+	try {
+		const src = await readFile(RATINGS, 'utf8');
+		return new Set([...src.matchAll(/^\t([A-Za-z0-9_]+):/gm)].map((m) => m[1]));
+	} catch {
+		return null;
+	}
 }
 
 const schema = await fetchSchema();
@@ -127,20 +137,24 @@ const pct = await fetchGlobalPct();
 const heists = [];
 const skippedMeta = [];
 for (const a of schema) {
-  if (!isOneDown(a.description)) continue;
-  const heist = parseHeistName(a.description);
-  if (!heist) throw new Error(`could not parse heist name from: ${a.description}`);
-  if (isMeta(heist)) { skippedMeta.push(heist); continue; }
-  if (!(a.id in pct)) throw new Error(`no global percentage for ${a.id}`);
-  if (!a.icon || !a.iconGray) throw new Error(`missing icon hash for ${a.id}`);
-  heists.push({
-    id: a.id,
-    heist,
-    achievement: a.achievement,
-    globalPct: pct[a.id],
-    icon: a.icon,
-    iconGray: a.iconGray,
-  });
+	if (!isOneDown(a.description)) continue;
+	const heist = parseHeistName(a.description);
+	if (!heist)
+		throw new Error(`could not parse heist name from: ${a.description}`);
+	if (isMeta(heist)) {
+		skippedMeta.push(heist);
+		continue;
+	}
+	if (!(a.id in pct)) throw new Error(`no global percentage for ${a.id}`);
+	if (!a.icon || !a.iconGray) throw new Error(`missing icon hash for ${a.id}`);
+	heists.push({
+		id: a.id,
+		heist,
+		achievement: a.achievement,
+		globalPct: pct[a.id],
+		icon: a.icon,
+		iconGray: a.iconGray,
+	});
 }
 
 heists.sort((a, b) => a.heist.localeCompare(b.heist));
@@ -153,21 +167,24 @@ const zeroed = heists.filter((h) => h.globalPct === 0);
 // Emitted stacked and tab-indented to match curated/ratings.ts. Prettier is
 // configured with objectWrap "preserve", so a stacked object stays stacked -
 // but this file is in .prettierignore anyway, to keep regeneration a no-op.
-const q = (v) => JSON.stringify(v).replace(/"/g, "'");
+// Single-quoted JS string literal with proper escaping. A blunt
+// JSON.stringify().replace('"', "'") breaks on names containing an
+// apostrophe, e.g. Breakin' Feds or Hell's Island.
+const q = (v) => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const rows = heists
-  .map((h) =>
-    [
-      '\t{',
-      `\t\tid: ${q(h.id)},`,
-      `\t\theist: ${q(h.heist)},`,
-      `\t\tachievement: ${q(h.achievement)},`,
-      `\t\tglobalPct: ${h.globalPct},`,
-      `\t\ticon: ${q(h.icon)},`,
-      `\t\ticonGray: ${q(h.iconGray)},`,
-      '\t},',
-    ].join('\n'),
-  )
-  .join('\n');
+	.map((h) =>
+		[
+			'\t{',
+			`\t\tid: ${q(h.id)},`,
+			`\t\theist: ${q(h.heist)},`,
+			`\t\tachievement: ${q(h.achievement)},`,
+			`\t\tglobalPct: ${h.globalPct},`,
+			`\t\ticon: ${q(h.icon)},`,
+			`\t\ticonGray: ${q(h.iconGray)},`,
+			'\t},',
+		].join('\n'),
+	)
+	.join('\n');
 
 const banner = `// GENERATED FILE - DO NOT EDIT.
 // Regenerate with: npm run sync:steam
@@ -177,8 +194,8 @@ const banner = `// GENERATED FILE - DO NOT EDIT.
 `;
 
 await writeFile(
-  OUT,
-  `${banner}
+	OUT,
+	`${banner}
 import type { SteamHeist } from '../types.js';
 
 export const STEAM_HEISTS = [
@@ -190,15 +207,29 @@ export type HeistId = (typeof STEAM_HEISTS)[number]['id'];
 `,
 );
 
-console.log(`\nwrote ${heists.length} heists -> ${OUT.pathname.split('/').slice(-4).join('/')}`);
-console.log(`skipped ${skippedMeta.length} meta achievements (whole-contractor sets)`);
-if (zeroed.length) console.log(`at 0.00% global unlock: ${zeroed.map((h) => h.heist).join(', ')}`);
+console.log(
+	`\nwrote ${heists.length} heists -> ${OUT.pathname.split('/').slice(-4).join('/')}`,
+);
+console.log(
+	`skipped ${skippedMeta.length} meta achievements (whole-contractor sets)`,
+);
+if (zeroed.length)
+	console.log(
+		`at 0.00% global unlock: ${zeroed.map((h) => h.heist).join(', ')}`,
+	);
 
 const prev = await existingRatingIds();
 if (prev) {
-  const added = [...ids].filter((i) => !prev.has(i));
-  const removed = [...prev].filter((i) => !ids.has(i));
-  if (added.length) console.log(`\nNEW heists needing a rating in curated/ratings.ts: ${added.join(', ')}`);
-  if (removed.length) console.log(`\nheists no longer in Steam, remove from ratings.ts: ${removed.join(', ')}`);
-  if (!added.length && !removed.length) console.log('\nratings.ts is in sync - no action needed');
+	const added = [...ids].filter((i) => !prev.has(i));
+	const removed = [...prev].filter((i) => !ids.has(i));
+	if (added.length)
+		console.log(
+			`\nNEW heists needing a rating in curated/ratings.ts: ${added.join(', ')}`,
+		);
+	if (removed.length)
+		console.log(
+			`\nheists no longer in Steam, remove from ratings.ts: ${removed.join(', ')}`,
+		);
+	if (!added.length && !removed.length)
+		console.log('\nratings.ts is in sync - no action needed');
 }

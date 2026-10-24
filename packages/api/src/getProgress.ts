@@ -4,9 +4,9 @@ import { SteamError, type SteamClient } from './steam.js';
 export type { PlayerProgress, ProgressResult };
 
 export interface Player {
-  readonly steamId: string;
-  /** Steam persona name, used as the column label. */
-  readonly name: string;
+	readonly steamId: string;
+	/** Steam persona name, used as the column label. */
+	readonly name: string;
 }
 
 /**
@@ -20,40 +20,41 @@ export interface Player {
  * achievements and we care about 86 of them.
  */
 export async function getProgress(
-  players: readonly Player[],
-  client: SteamClient,
+	players: readonly Player[],
+	client: SteamClient,
 ): Promise<ProgressResult> {
-  const results = await Promise.all(
-    players.map(async (player): Promise<PlayerProgress> => {
-      try {
-        const unlocked = await client.getUnlocked(player.steamId);
-        const mine: Record<string, number> = {};
-        for (const heist of CATALOG) {
-          const at = unlocked.get(heist.id);
-          if (at !== undefined) mine[heist.id] = at;
-        }
-        return {
-          steamId: player.steamId,
-          name: player.name,
-          completed: Object.keys(mine).length,
-          unlocked: mine,
-        };
-      } catch (cause) {
-        const error = cause instanceof SteamError ? cause.message : String(cause);
-        return {
-          steamId: player.steamId,
-          name: player.name,
-          completed: 0,
-          unlocked: {},
-          error,
-        };
-      }
-    }),
-  );
+	const results = await Promise.all(
+		players.map(async (player): Promise<PlayerProgress> => {
+			try {
+				const unlocked = await client.getUnlocked(player.steamId);
+				const mine: Record<string, number> = {};
+				for (const heist of CATALOG) {
+					const at = unlocked.get(heist.id);
+					if (at !== undefined) mine[heist.id] = at;
+				}
+				return {
+					steamId: player.steamId,
+					name: player.name,
+					completed: Object.keys(mine).length,
+					unlocked: mine,
+				};
+			} catch (cause) {
+				const error =
+					cause instanceof SteamError ? cause.message : String(cause);
+				return {
+					steamId: player.steamId,
+					name: player.name,
+					completed: 0,
+					unlocked: {},
+					error,
+				};
+			}
+		}),
+	);
 
-  return {
-    fetchedAt: new Date().toISOString(),
-    total: CATALOG.length,
-    players: results,
-  };
+	return {
+		fetchedAt: new Date().toISOString(),
+		total: CATALOG.length,
+		players: results,
+	};
 }

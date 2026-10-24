@@ -10,26 +10,28 @@ let cachedKey: string | undefined;
  * SecureString named by STEAM_API_KEY_PARAM, once per cold start.
  */
 export async function resolveApiKey(): Promise<string> {
-  if (cachedKey) return cachedKey;
+	if (cachedKey) return cachedKey;
 
-  const direct = process.env['STEAM_API_KEY'];
-  if (direct) {
-    cachedKey = direct;
-    return cachedKey;
-  }
+	const direct = process.env['STEAM_API_KEY'];
+	if (direct) {
+		cachedKey = direct;
+		return cachedKey;
+	}
 
-  const name = process.env['STEAM_API_KEY_PARAM'];
-  if (!name) {
-    throw new Error('neither STEAM_API_KEY nor STEAM_API_KEY_PARAM is set');
-  }
+	const name = process.env['STEAM_API_KEY_PARAM'];
+	if (!name) {
+		throw new Error('neither STEAM_API_KEY nor STEAM_API_KEY_PARAM is set');
+	}
 
-  const ssm = new SSMClient({});
-  const res = await ssm.send(new GetParameterCommand({ Name: name, WithDecryption: true }));
-  const value = res.Parameter?.Value;
-  if (!value) throw new Error(`SSM parameter ${name} is empty`);
+	const ssm = new SSMClient({});
+	const res = await ssm.send(
+		new GetParameterCommand({ Name: name, WithDecryption: true }),
+	);
+	const value = res.Parameter?.Value;
+	if (!value) throw new Error(`SSM parameter ${name} is empty`);
 
-  cachedKey = value;
-  return cachedKey;
+	cachedKey = value;
+	return cachedKey;
 }
 
 /**
@@ -41,22 +43,22 @@ export async function resolveApiKey(): Promise<string> {
  * used to look up arbitrary Steam profiles on our API quota.
  */
 export function resolvePlayers(): readonly Player[] {
-  const raw = process.env['PD2_PLAYERS'];
-  if (!raw) throw new Error('PD2_PLAYERS is not set');
+	const raw = process.env['PD2_PLAYERS'];
+	if (!raw) throw new Error('PD2_PLAYERS is not set');
 
-  const players = raw
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map((entry) => {
-      const [steamId, ...rest] = entry.split(':');
-      const name = rest.join(':').trim();
-      if (!steamId || !name) {
-        throw new Error(`PD2_PLAYERS entry is not "steamid:name": ${entry}`);
-      }
-      return { steamId: steamId.trim(), name };
-    });
+	const players = raw
+		.split(',')
+		.map((entry) => entry.trim())
+		.filter(Boolean)
+		.map((entry) => {
+			const [steamId, ...rest] = entry.split(':');
+			const name = rest.join(':').trim();
+			if (!steamId || !name) {
+				throw new Error(`PD2_PLAYERS entry is not "steamid:name": ${entry}`);
+			}
+			return { steamId: steamId.trim(), name };
+		});
 
-  if (players.length === 0) throw new Error('PD2_PLAYERS contained no entries');
-  return players;
+	if (players.length === 0) throw new Error('PD2_PLAYERS contained no entries');
+	return players;
 }

@@ -6,19 +6,19 @@
  */
 
 export interface PlayerProgress {
-  readonly steamId: string;
-  /** Steam persona name, used as the column label. */
-  readonly name: string;
-  readonly completed: number;
-  /** Heist id -> unix unlock time. An absent key means not cleared. */
-  readonly unlocked: Readonly<Record<string, number>>;
-  /** Set when this player's data could not be read; `unlocked` is then empty. */
-  readonly error?: string;
+	readonly steamId: string;
+	/** Steam persona name, used as the column label. */
+	readonly name: string;
+	readonly completed: number;
+	/** Heist id -> unix unlock time. An absent key means not cleared. */
+	readonly unlocked: Readonly<Record<string, number>>;
+	/** Set when this player's data could not be read; `unlocked` is then empty. */
+	readonly error?: string;
 }
 
 export interface ProgressResult {
-  readonly fetchedAt: string;
-  /** Number of heists in the catalog, i.e. the denominator. */
-  readonly total: number;
-  readonly players: readonly PlayerProgress[];
+	readonly fetchedAt: string;
+	/** Number of heists in the catalog, i.e. the denominator. */
+	readonly total: number;
+	readonly players: readonly PlayerProgress[];
 }

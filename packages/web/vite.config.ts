@@ -4,7 +4,9 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 
 /** Resolved lazily through Vite so its TypeScript is transformed for us. */
-const API_ENTRY = fileURLToPath(new URL('../api/src/index.ts', import.meta.url));
+const API_ENTRY = fileURLToPath(
+	new URL('../api/src/index.ts', import.meta.url),
+);
 
 type ApiModule = typeof import('@pd2/api');
 
@@ -23,52 +25,58 @@ type ApiModule = typeof import('@pd2/api');
  * reaches the browser bundle.
  */
 function localApi(env: Record<string, string>): Plugin {
-  const parsePlayers = (raw: string) =>
-    raw
-      .split(',')
-      .map((entry) => entry.trim())
-      .filter(Boolean)
-      .map((entry) => {
-        const [steamId, ...rest] = entry.split(':');
-        return { steamId: (steamId ?? '').trim(), name: rest.join(':').trim() };
-      });
+	const parsePlayers = (raw: string) =>
+		raw
+			.split(',')
+			.map((entry) => entry.trim())
+			.filter(Boolean)
+			.map((entry) => {
+				const [steamId, ...rest] = entry.split(':');
+				return { steamId: (steamId ?? '').trim(), name: rest.join(':').trim() };
+			});
 
-  return {
-    name: 'pd2-local-api',
-    configureServer(server: ViteDevServer) {
-      server.middlewares.use('/api/progress', async (_req, res) => {
-        res.setHeader('content-type', 'application/json');
-        res.setHeader('cache-control', 'no-store');
-        try {
-          const apiKey = env['STEAM_API_KEY'];
-          if (!apiKey) {
-            throw new Error('STEAM_API_KEY missing - copy .env.example to .env.local');
-          }
-          const players = parsePlayers(env['PD2_PLAYERS'] ?? '');
-          if (players.length === 0) throw new Error('PD2_PLAYERS missing in .env.local');
+	return {
+		name: 'pd2-local-api',
+		configureServer(server: ViteDevServer) {
+			server.middlewares.use('/api/progress', async (_req, res) => {
+				res.setHeader('content-type', 'application/json');
+				res.setHeader('cache-control', 'no-store');
+				try {
+					const apiKey = env['STEAM_API_KEY'];
+					if (!apiKey) {
+						throw new Error(
+							'STEAM_API_KEY missing - copy .env.example to .env.local',
+						);
+					}
+					const players = parsePlayers(env['PD2_PLAYERS'] ?? '');
+					if (players.length === 0)
+						throw new Error('PD2_PLAYERS missing in .env.local');
 
-          const { getProgress, createSteamClient } = (await server.ssrLoadModule(
-            API_ENTRY,
-          )) as unknown as ApiModule;
+					const { getProgress, createSteamClient } =
+						(await server.ssrLoadModule(API_ENTRY)) as unknown as ApiModule;
 
-          res.end(JSON.stringify(await getProgress(players, createSteamClient(apiKey))));
-        } catch (cause) {
-          res.statusCode = 500;
-          server.config.logger.error(`[pd2-local-api] ${String(cause)}`);
-          res.end(JSON.stringify({ error: String(cause) }));
-        }
-      });
-    },
-  };
+					res.end(
+						JSON.stringify(
+							await getProgress(players, createSteamClient(apiKey)),
+						),
+					);
+				} catch (cause) {
+					res.statusCode = 500;
+					server.config.logger.error(`[pd2-local-api] ${String(cause)}`);
+					res.end(JSON.stringify({ error: String(cause) }));
+				}
+			});
+		},
+	};
 }
 
 export default defineConfig(({ mode }) => {
-  // '' prefix loads every var, not just VITE_*.
-  const env = loadEnv(mode, import.meta.dirname, '');
-  return {
-    plugins: [react(), tailwindcss(), localApi(env)],
-    resolve: {
-      alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
-    },
-  };
+	// '' prefix loads every var, not just VITE_*.
+	const env = loadEnv(mode, import.meta.dirname, '');
+	return {
+		plugins: [react(), tailwindcss(), localApi(env)],
+		resolve: {
+			alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+		},
+	};
 });

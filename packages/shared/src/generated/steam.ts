@@ -90,7 +90,7 @@ export const STEAM_HEISTS = [
 	{
 		id: 'chca_8',
 		heist: 'Black Cat',
-		achievement: 'Second Star to the Right, then Straight On 'Til Morning',
+		achievement: 'Second Star to the Right, then Straight On \'Til Morning',
 		globalPct: 1.4,
 		icon: 'c7763f2890711125344ac460e201e228d550481b',
 		iconGray: 'abe751f418c5203daf23031a398deeb1289ead1b',
@@ -129,8 +129,8 @@ export const STEAM_HEISTS = [
 	},
 	{
 		id: 'tag_8',
-		heist: 'Breakin' Feds',
-		achievement: 'Garrett's Foil',
+		heist: 'Breakin\' Feds',
+		achievement: 'Garrett\'s Foil',
 		globalPct: 3.8,
 		icon: '6b2e2d7f3647b5d71f40271da268d5884f96d867',
 		iconGray: 'b5ec736c7aa81c7fffd38fd7002a2b7be9a4a9a5',
@@ -153,7 +153,7 @@ export const STEAM_HEISTS = [
 	},
 	{
 		id: 'fex_8',
-		heist: 'Buluc's Mansion',
+		heist: 'Buluc\'s Mansion',
 		achievement: 'Sunset Serenade',
 		globalPct: 1.9,
 		icon: '405bc30fd76e854d3725ec942eb6f5f5881a5bec',
@@ -178,7 +178,7 @@ export const STEAM_HEISTS = [
 	{
 		id: 'axe_51',
 		heist: 'Counterfeit',
-		achievement: 'Bodhi's Pool Repair Crew',
+		achievement: 'Bodhi\'s Pool Repair Crew',
 		globalPct: 4.4,
 		icon: 'a1cd3e6c90d49c518a8d835aad56ffdf8f529216',
 		iconGray: '7d59f9cdb9a0ca0af80e6a393cb11b7d5b210df4',
@@ -282,7 +282,7 @@ export const STEAM_HEISTS = [
 	{
 		id: 'axe_44',
 		heist: 'Golden Grin Casino',
-		achievement: 'Ocean's Four',
+		achievement: 'Ocean\'s Four',
 		globalPct: 5.3,
 		icon: '585d0ac91a68bfe32fb3d54cae48d2f26a92fecb',
 		iconGray: '81771da3e96f9eeb99ecdd8d556752df8f8c70bd',
@@ -305,7 +305,7 @@ export const STEAM_HEISTS = [
 	},
 	{
 		id: 'bph_8',
-		heist: 'Hell's Island',
+		heist: 'Hell\'s Island',
 		achievement: 'Last Meal',
 		globalPct: 2.8,
 		icon: '39c0f1405746c243818a4b1cb3c9bd52f11d17cd',
@@ -313,7 +313,7 @@ export const STEAM_HEISTS = [
 	},
 	{
 		id: 'des_8',
-		heist: 'Henry's Rock',
+		heist: 'Henry\'s Rock',
 		achievement: 'Heisting on the Salt Flats',
 		globalPct: 3,
 		icon: 'b95b7dfc1fffea9c88824d9787b8b00e4436506b',
@@ -330,7 +330,7 @@ export const STEAM_HEISTS = [
 	{
 		id: 'axe_31',
 		heist: 'Hotline Miami',
-		achievement: 'Dennis' Menace',
+		achievement: 'Dennis\' Menace',
 		globalPct: 4.3,
 		icon: 'fb87057de6be54774a44c33f6e302e45b617d31e',
 		iconGray: 'd945c7488e9ad8cb55b64bf7b65d259cfa0bc41c',
@@ -378,7 +378,7 @@ export const STEAM_HEISTS = [
 	{
 		id: 'axe_2',
 		heist: 'Mallcrasher',
-		achievement: 'I'll Break Your Malls',
+		achievement: 'I\'ll Break Your Malls',
 		globalPct: 4.8,
 		icon: 'c20e72f2046ab768aac74510721b685827c14dfb',
 		iconGray: 'afde6029ef90e765433dcb77906ef5631cc1b1a1',
@@ -489,7 +489,7 @@ export const STEAM_HEISTS = [
 	},
 	{
 		id: 'axe_54',
-		heist: 'Santa's Workshop',
+		heist: 'Santa\'s Workshop',
 		achievement: 'On my Twelfth Try with One Down, The True Pain Began',
 		globalPct: 4.3,
 		icon: '43a3cdc4fd34d97f321eed2c9d35376aea92d72c',
@@ -642,7 +642,7 @@ export const STEAM_HEISTS = [
 	{
 		id: 'axe_25',
 		heist: 'Transport: Underpass',
-		achievement: 'Fog This Shit I'm Out!',
+		achievement: 'Fog This Shit I\'m Out!',
 		globalPct: 4.3,
 		icon: 'e887fd3b3be22c449803f77c2dae54a4ef45327b',
 		iconGray: '334c5fc8c1fd187c39a028857ce2144039418c15',

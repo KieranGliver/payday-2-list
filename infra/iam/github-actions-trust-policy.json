@@ -1,18 +1,18 @@
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::227415629009:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:KieranGliver@23320961/payday-2-list@1431616572:ref:refs/heads/master"
-        }
-      }
-    }
-  ]
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Principal": {
+				"Federated": "arn:aws:iam::227415629009:oidc-provider/token.actions.githubusercontent.com"
+			},
+			"Action": "sts:AssumeRoleWithWebIdentity",
+			"Condition": {
+				"StringEquals": {
+					"token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+					"token.actions.githubusercontent.com:sub": "repo:KieranGliver@23320961/payday-2-list@1431616572:ref:refs/heads/master"
+				}
+			}
+		}
+	]
 }

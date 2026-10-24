@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  # Also on master itself: a direct push bypasses PR checks, and deploy.yml
+  # would otherwise ship code nothing had verified.
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Independent steps rather than one chained command, so a failure names
+      # which gate broke instead of just "the script exited 1".
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+
+      # deploy.yml builds too, but it only runs after this; building here means
+      # a broken build fails the PR rather than the deploy.
+      - run: npm run build
+      - run: npm run package -w @pd2/api
+
+      # The committed catalog must match what the generator produces. Catches a
+      # hand-edit to a generated file, which would be silently overwritten on
+      # the next sync. Uses the keyless community-page path - no secret needed.
+      - name: Catalog is in sync with the generator
+        run: |
+          npm run sync:steam
+          git diff --exit-code packages/shared/src/generated/steam.ts \
+            || { echo "::error::generated/steam.ts is stale - run npm run sync:steam"; exit 1; }

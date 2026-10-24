@@ -1,0 +1,24 @@
+/* Shared compiler settings. Every package extends this so strictness cannot
+   drift apart per package - which is how web ended up without
+   noUncheckedIndexedAccess, and vite.config.ts without strict at all. */
+{
+	"compilerOptions": {
+		"target": "ES2023",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"moduleDetection": "force",
+
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+
+		"skipLibCheck": true,
+		"noEmit": true
+	}
+}

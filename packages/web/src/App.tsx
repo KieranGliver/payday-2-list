@@ -1,11 +1,13 @@
 import {
 	CATALOG,
 	hasCleared,
+	resolveBadges,
 	okPlayers,
 	type PlayerProgress,
 } from '@pd2/shared';
 import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { BadgeWall } from '@/components/BadgeWall';
 import { Filters } from '@/components/Filters';
 import { HeistTable } from '@/components/HeistTable';
 import { ProgressMeter } from '@/components/ProgressMeter';
@@ -68,6 +70,8 @@ export default function App() {
 		[ok],
 	);
 
+	const badges = useMemo(() => resolveBadges(players), [players]);
+
 	/** Clicking the active column flips direction; a new column starts ascending. */
 	const onSort = (key: SortKey) =>
 		setSort((s) =>
@@ -115,6 +119,8 @@ export default function App() {
 					players={players}
 					unreadable={unreadable.length}
 				/>
+
+				<BadgeWall badges={badges} />
 
 				<Filters
 					value={filters}

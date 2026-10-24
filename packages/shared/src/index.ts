@@ -1,5 +1,11 @@
 export { CATALOG, BY_ID } from './catalog.js';
-export { STEAM_HEISTS, type HeistId } from './generated/steam.js';
+export { badgeTally, resolveBadges, type Badge } from './badges.js';
+export {
+	META_ACHIEVEMENTS,
+	STEAM_HEISTS,
+	type HeistId,
+	type MetaId,
+} from './generated/steam.js';
 export { RATINGS } from './curated/ratings.js';
 export {
 	apiErrorSchema,
@@ -26,6 +32,7 @@ export {
 	type Contractor,
 	type Approach,
 	type PerceivedDifficulty,
+	type MetaAchievement,
 	type SteamHeist,
 	type Rating,
 	type Heist,

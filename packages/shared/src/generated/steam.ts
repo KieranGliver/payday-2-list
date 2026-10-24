@@ -4,7 +4,7 @@
 // Curated fields (contractor, approach, perceived difficulty) live in
 // ../curated/ratings.ts and are never written by the generator.
 
-import type { SteamHeist } from '../types.js';
+import type { MetaAchievement, SteamHeist } from '../types.js';
 
 export const STEAM_HEISTS = [
 	{
@@ -699,3 +699,111 @@ export const STEAM_HEISTS = [
 
 /** Literal union of every known heist id. */
 export type HeistId = (typeof STEAM_HEISTS)[number]['id'];
+
+/**
+ * "Complete all of X's contracts" achievements.
+ *
+ * Steam's own verdict on whether a contractor's set is finished, which is why
+ * they are tracked separately from the per-heist achievements rather than
+ * computed from them.
+ */
+export const META_ACHIEVEMENTS = [
+	{
+		id: 'trk_cc_6',
+		achievement: '145+ Down',
+		scope: 'all Classic contracts',
+		globalPct: 3.2,
+		icon: '1bcb1915cb7097b9fc62f02fa306be2778db6e5f',
+		iconGray: 'fa14b87ef7233e48f388427ab82665227e0d90c2',
+	},
+	{
+		id: 'ggez_1',
+		achievement: 'One More Down, No More To Go',
+		scope: 'all contracts',
+		globalPct: 3.5,
+		icon: 'f20b448368dcbe3640ae68d5c2de37b90025ee67',
+		iconGray: '20493c5074b1576c9b5a24d11e5c8bca3f8aff69',
+	},
+	{
+		id: 'trk_ev_6',
+		achievement: 'And Now for Something Completely Different',
+		scope: 'all Event contracts',
+		globalPct: 3.2,
+		icon: 'f19426d8479d1b7ca933e5a1cbe01c3c6419c5c1',
+		iconGray: '5ab1eff3ed8cb827e2ca9da03fa0493240db8889',
+	},
+	{
+		id: 'axe_65',
+		achievement: 'Crime.net is My Homepage',
+		scope: 'all of Bain\'s contracts',
+		globalPct: 4.1,
+		icon: 'b8728cd0ca216eb988001678878e3412f41d88f8',
+		iconGray: '845a0f9d5b962755080e1c2aae131525689063b7',
+	},
+	{
+		id: 'trk_d_6',
+		achievement: 'Jaw Dropping',
+		scope: 'all of Dentist\'s contracts',
+		globalPct: 3.2,
+		icon: '584f504e195d7ad64f09a20ecac8c5fd32d4e216',
+		iconGray: 'fa976effb021f5ae44497531573b6e604b44857b',
+	},
+	{
+		id: 'axe_63',
+		achievement: 'We Can Trust This Guy',
+		scope: 'all of Hector\'s contracts',
+		globalPct: 4.2,
+		icon: '64cd56ce046dfcd740fb1eeae51adf894a625be0',
+		iconGray: '934a240aeb4c56488722bb744b44f9e47648dd32',
+	},
+	{
+		id: 'trk_j_6',
+		achievement: 'Take Out His Beating Heart, and Fucking Eat It!',
+		scope: 'all of Jimmy\'s contracts',
+		globalPct: 3.4,
+		icon: 'a43c103e47ff5f373544fec95a7388c527b3c659',
+		iconGray: '6243b72f28857bfcee6b285a2ca1d782ffd54f1a',
+	},
+	{
+		id: 'trk_l_6',
+		achievement: 'Completed, Fo\' Sho\'',
+		scope: 'all of Locke\'s contracts',
+		globalPct: 3.2,
+		icon: '4e1c8baaba24855bacc0d94004c44ddaa0bfb14e',
+		iconGray: '13fa0d691662bbde59a5b60f29b100fef99f3ce5',
+	},
+	{
+		id: 'trk_cb_6',
+		achievement: 'Everybody Owes, Everybody Pays',
+		scope: 'all of The Butcher\'s contracts',
+		globalPct: 3.2,
+		icon: '367d31bc0bd866b93a4a606714ff95c421608434',
+		iconGray: '94d5a2f801daeac2f8bd92e3bb7dd295d53b8698',
+	},
+	{
+		id: 'trk_c_6',
+		achievement: 'Nobody is That Good...',
+		scope: 'all of The Continental\'s contracts',
+		globalPct: 3.3,
+		icon: 'b95082bfdf6ef04f115d95e6abc94a1a6b09791a',
+		iconGray: 'dc4b10e685f190c00e25a7897ae216b3403d3a99',
+	},
+	{
+		id: 'axe_64',
+		achievement: 'Democracy at Work',
+		scope: 'all of the Elephants contracts',
+		globalPct: 4.1,
+		icon: '7ad5fa17554ffcd18f2a8991d5713586995faed1',
+		iconGray: '5e61feba7545ff5bc6b937c996d6433b2bb1ef62',
+	},
+	{
+		id: 'axe_62',
+		achievement: 'A Sad Vlad is Bad',
+		scope: 'all of Vlad\'s contracts',
+		globalPct: 4,
+		icon: '08b882b53ed8c53c72f72c0dceca36201606578c',
+		iconGray: 'ae5909f84f50e6fe4350c2b4ce24fb035e59425b',
+	},
+] as const satisfies readonly MetaAchievement[];
+
+export type MetaId = (typeof META_ACHIEVEMENTS)[number]['id'];

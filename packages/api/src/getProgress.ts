@@ -1,5 +1,6 @@
 import {
 	CATALOG,
+	META_ACHIEVEMENTS,
 	type Player,
 	type PlayerProgress,
 	type ProgressResult,
@@ -30,15 +31,27 @@ export async function getProgress(
 			try {
 				const unlocked = await client.getUnlocked(player.steamId);
 				const mine: Record<string, number> = {};
+				let completed = 0;
 				for (const heist of CATALOG) {
 					const at = unlocked.get(heist.id);
-					if (at !== undefined) mine[heist.id] = at;
+					if (at !== undefined) {
+						mine[heist.id] = at;
+						completed += 1;
+					}
+				}
+				// The whole-contractor achievements ride along in the same map so
+				// the badge wall can read Steam's own verdict, but they are NOT
+				// counted in `completed` - that is a heist count, and including
+				// them would inflate it past the catalog size.
+				for (const meta of META_ACHIEVEMENTS) {
+					const at = unlocked.get(meta.id);
+					if (at !== undefined) mine[meta.id] = at;
 				}
 				return {
 					status: 'ok',
 					steamId: player.steamId,
 					name: player.name,
-					completed: Object.keys(mine).length,
+					completed,
 					unlocked: mine,
 				};
 			} catch (cause) {

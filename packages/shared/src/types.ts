@@ -45,6 +45,23 @@ export interface SteamHeist {
 export const iconUrl = (hash: string): string =>
 	`https://shared.fastly.steamstatic.com/community_assets/images/apps/218620/${hash}.jpg`;
 
+/**
+ * A "complete all of X's contracts" achievement.
+ *
+ * Tracked from Steam directly rather than derived from our own heist list: if
+ * our contractor grouping is wrong, Steam's verdict and ours disagree, and
+ * that disagreement is worth surfacing rather than hiding.
+ */
+export interface MetaAchievement {
+	readonly id: string;
+	readonly achievement: string;
+	/** The description's phrase, e.g. "all of Vlad's contracts". */
+	readonly scope: string;
+	readonly globalPct: number;
+	readonly icon: string;
+	readonly iconGray: string;
+}
+
 /** Our judgements. Hand-maintained; never regenerated. */
 export interface Rating {
 	readonly contractor: Contractor;

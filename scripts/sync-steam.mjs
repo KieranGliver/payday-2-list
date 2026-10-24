@@ -94,6 +94,9 @@ async function fetchSchema() {
  */
 const MIN_HEISTS = 80;
 
+/** Same reasoning as MIN_HEISTS, for the whole-contractor achievements. */
+const MIN_METAS = 10;
+
 /** { [api_name]: percent } */
 async function fetchGlobalPct() {
 	const url = `https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/?gameid=${APPID}`;
@@ -125,14 +128,32 @@ const schema = await fetchSchema();
 const pct = await fetchGlobalPct();
 
 const heists = [];
-const skippedMeta = [];
+const metas = [];
 for (const a of schema) {
 	if (!isOneDown(a.description)) continue;
 	const heist = parseHeistName(a.description);
 	if (!heist)
 		throw new Error(`could not parse heist name from: ${a.description}`);
 	if (isMeta(heist)) {
-		skippedMeta.push(heist);
+		// The whole-contractor achievements. Kept rather than discarded: they
+		// are Steam's own verdict on whether a set is complete, which is a
+		// stronger signal than counting the heists WE think belong to it.
+		const metaPct = toPercent(pct[a.id]);
+		if (metaPct === null) {
+			throw new Error(`global percentage for ${a.id} is not a percentage`);
+		}
+		if (!a.icon || !a.iconGray) {
+			throw new Error(`missing icon hash for ${a.id}`);
+		}
+		metas.push({
+			id: a.id,
+			achievement: a.achievement,
+			// "all of Vlad's contracts" / "all Classic contracts" / "all contracts"
+			scope: heist,
+			globalPct: metaPct,
+			icon: a.icon,
+			iconGray: a.iconGray,
+		});
 		continue;
 	}
 	if (!(a.id in pct)) throw new Error(`no global percentage for ${a.id}`);
@@ -206,6 +227,28 @@ const rows = heists
 	)
 	.join('\n');
 
+metas.sort((a, b) => a.scope.localeCompare(b.scope, 'en'));
+if (metas.length < MIN_METAS) {
+	throw new Error(
+		`only ${metas.length} meta achievements found, expected at least ${MIN_METAS}`,
+	);
+}
+
+const metaRows = metas
+	.map((m) =>
+		[
+			'\t{',
+			`\t\tid: ${quote(m.id)},`,
+			`\t\tachievement: ${quote(m.achievement)},`,
+			`\t\tscope: ${quote(m.scope)},`,
+			`\t\tglobalPct: ${m.globalPct},`,
+			`\t\ticon: ${quote(m.icon)},`,
+			`\t\ticonGray: ${quote(m.iconGray)},`,
+			'\t},',
+		].join('\n'),
+	)
+	.join('\n');
+
 const banner = `// GENERATED FILE - DO NOT EDIT.
 // Regenerate with: npm run sync:steam
 // Source: Steam achievement schema + global unlock percentages for appid ${APPID}.
@@ -216,7 +259,7 @@ const banner = `// GENERATED FILE - DO NOT EDIT.
 await writeFile(
 	OUT,
 	`${banner}
-import type { SteamHeist } from '../types.js';
+import type { MetaAchievement, SteamHeist } from '../types.js';
 
 export const STEAM_HEISTS = [
 ${rows}
@@ -224,15 +267,26 @@ ${rows}
 
 /** Literal union of every known heist id. */
 export type HeistId = (typeof STEAM_HEISTS)[number]['id'];
+
+/**
+ * "Complete all of X's contracts" achievements.
+ *
+ * Steam's own verdict on whether a contractor's set is finished, which is why
+ * they are tracked separately from the per-heist achievements rather than
+ * computed from them.
+ */
+export const META_ACHIEVEMENTS = [
+${metaRows}
+] as const satisfies readonly MetaAchievement[];
+
+export type MetaId = (typeof META_ACHIEVEMENTS)[number]['id'];
 `,
 );
 
 console.log(
 	`\nwrote ${heists.length} heists -> ${OUT.pathname.split('/').slice(-4).join('/')}`,
 );
-console.log(
-	`skipped ${skippedMeta.length} meta achievements (whole-contractor sets)`,
-);
+console.log(`wrote ${metas.length} meta achievements (whole-contractor sets)`);
 if (zeroed.length)
 	console.log(
 		`at 0.00% global unlock: ${zeroed.map((h) => h.heist).join(', ')}`,

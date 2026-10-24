@@ -1,5 +1,5 @@
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
-import type { Player } from './getProgress';
+import type { Player } from './getProgress.js';
 
 let cachedKey: string | undefined;
 

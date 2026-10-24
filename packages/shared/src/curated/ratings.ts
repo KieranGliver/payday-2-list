@@ -6,8 +6,8 @@
 // Typed as Record<HeistId, Rating>, so adding a heist to Steam breaks the build
 // until it is rated here, and a typo'd id or value is a compile error.
 
-import type { Rating } from '../types';
-import type { HeistId } from '../generated/steam';
+import type { Rating } from '../types.js';
+import type { HeistId } from '../generated/steam.js';
 
 export const RATINGS: Record<HeistId, Rating> = {
   // --- Bain ---

@@ -3,5 +3,13 @@
   "references": [
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" }
-  ]
+  ],
+  /* The shadcn CLI reads this file (not tsconfig.app.json) to resolve the "@"
+     alias. Without it the CLI writes components into a literal "@" folder.
+     ignoreDeprecations is needed because TS 6 deprecates baseUrl. */
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
+  }
 }

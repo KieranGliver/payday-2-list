@@ -4,12 +4,15 @@ const APPID = 218620;
 const ENDPOINT = 'https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/';
 
 export class SteamError extends Error {
-  constructor(
-    message: string,
-    readonly steamId: string,
-  ) {
+  readonly steamId: string;
+
+  // Field assigned explicitly rather than via a constructor parameter
+  // property: those are not erasable syntax, which the web package's
+  // erasableSyntaxOnly check rejects.
+  constructor(message: string, steamId: string) {
     super(message);
     this.name = 'SteamError';
+    this.steamId = steamId;
   }
 }
 

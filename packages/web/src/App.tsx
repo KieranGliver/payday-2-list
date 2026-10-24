@@ -1,122 +1,78 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { CATALOG, type PlayerProgress } from '@pd2/shared';
+import { RefreshCw } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Filters } from '@/components/Filters';
+import { HeistTable } from '@/components/HeistTable';
+import { ProgressMeter } from '@/components/ProgressMeter';
+import { Button } from '@/components/ui/button';
+import { applyFilters, INITIAL_FILTERS, type FilterState } from '@/lib/filters';
+import { INITIAL_SORT, sortHeists, type SortKey, type SortState } from '@/lib/sort';
+import { useProgress } from '@/lib/useProgress';
 
-function App() {
-  const [count, setCount] = useState(0)
+/** Stable identity, so the memos below don't re-run on every render. */
+const NO_PLAYERS: readonly PlayerProgress[] = [];
+
+export default function App() {
+  const { state, reload } = useProgress();
+  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [sort, setSort] = useState<SortState>(INITIAL_SORT);
+
+  const players = useMemo(
+    () => (state.status === 'ready' ? state.data.players : NO_PLAYERS),
+    [state],
+  );
+
+  const rows = useMemo(
+    () => sortHeists(applyFilters(CATALOG, players, filters), sort, players),
+    [players, filters, sort],
+  );
+
+  const both = useMemo(
+    () =>
+      players.length === 0
+        ? 0
+        : CATALOG.filter((h) => players.every((p) => h.id in p.unlocked)).length,
+    [players],
+  );
+
+  /** Clicking the active column flips direction; a new column starts ascending. */
+  const onSort = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, desc: !s.desc } : { key, desc: false }));
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="bg-background text-foreground min-h-dvh">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Payday 2 — One Down</h1>
+            <p className="text-muted-foreground text-sm">
+              {state.status === 'ready' ? (
+                <>Synced from Steam {new Date(state.data.fetchedAt).toLocaleTimeString()}</>
+              ) : state.status === 'loading' ? (
+                'Reading achievements from Steam…'
+              ) : (
+                <span className="text-destructive">{state.message}</span>
+              )}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={reload} disabled={state.status === 'loading'}>
+            <RefreshCw className={state.status === 'loading' ? 'animate-spin' : ''} aria-hidden />
+            Refresh
+          </Button>
+        </header>
 
-      <div className="ticks"></div>
+        <ProgressMeter both={both} total={CATALOG.length} players={players} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <Filters
+          value={filters}
+          onChange={setFilters}
+          players={players}
+          shown={rows.length}
+          total={CATALOG.length}
+        />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <HeistTable heists={rows} players={players} sort={sort} onSort={onSort} />
+      </div>
+    </div>
+  );
 }
-
-export default App

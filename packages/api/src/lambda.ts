@@ -1,6 +1,6 @@
-import { resolveApiKey, resolvePlayers } from './config';
-import { getProgress } from './getProgress';
-import { createSteamClient } from './steam';
+import { resolveApiKey, resolvePlayers } from './config.js';
+import { getProgress } from './getProgress.js';
+import { createSteamClient } from './steam.js';
 
 interface FunctionUrlEvent {
   readonly requestContext?: {

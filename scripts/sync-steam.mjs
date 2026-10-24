@@ -136,7 +136,7 @@ const banner = `// GENERATED FILE - DO NOT EDIT.
 await writeFile(
   OUT,
   `${banner}
-import type { SteamHeist } from '../types';
+import type { SteamHeist } from '../types.js';
 
 export const STEAM_HEISTS = [
 ${rows}

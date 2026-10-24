@@ -4,7 +4,7 @@
 // Curated fields (contractor, approach, perceived difficulty) live in
 // ../curated/ratings.ts and are never written by the generator.
 
-import type { SteamHeist } from '../types';
+import type { SteamHeist } from '../types.js';
 
 export const STEAM_HEISTS = [
   { id: "axe_45", heist: "Aftershock", achievement: "Disaster Tourist", globalPct: 4.2 },

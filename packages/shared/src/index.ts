@@ -1,6 +1,7 @@
-export { CATALOG, BY_ID } from './catalog';
-export { STEAM_HEISTS, type HeistId } from './generated/steam';
-export { RATINGS } from './curated/ratings';
+export { CATALOG, BY_ID } from './catalog.js';
+export type { PlayerProgress, ProgressResult } from './api.js';
+export { STEAM_HEISTS, type HeistId } from './generated/steam.js';
+export { RATINGS } from './curated/ratings.js';
 export {
   CONTRACTORS,
   APPROACHES,
@@ -11,4 +12,4 @@ export {
   type SteamHeist,
   type Rating,
   type Heist,
-} from './types';
+} from './types.js';

@@ -15,5 +15,9 @@
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.1156.0",
     "@pd2/shared": "^0.1.0"
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
   }
 }

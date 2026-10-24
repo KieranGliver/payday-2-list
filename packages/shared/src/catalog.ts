@@ -1,6 +1,6 @@
-import { STEAM_HEISTS, type HeistId } from './generated/steam';
-import { RATINGS } from './curated/ratings';
-import type { Heist } from './types';
+import { STEAM_HEISTS, type HeistId } from './generated/steam.js';
+import { RATINGS } from './curated/ratings.js';
+import type { Heist } from './types.js';
 
 /**
  * Every One Down heist, with Steam's facts and our judgements joined on id.

@@ -17,10 +17,17 @@
     "jsx": "react-jsx",
 
     /* Linting */
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    /* Path alias, required by shadcn/ui. baseUrl is deprecated in TS 6 but
+       the shadcn CLI needs it to resolve "@" to a real directory - without it
+       the CLI writes components into a literal "@" folder. */
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"]
 }

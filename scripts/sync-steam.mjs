@@ -97,6 +97,13 @@ const MIN_HEISTS = 80;
 /** Same reasoning as MIN_HEISTS, for the whole-contractor achievements. */
 const MIN_METAS = 10;
 
+/**
+ * Descriptions are prose, so any backslash in one is an escaping artefact of
+ * whichever source it came from, not content. Strip them rather than chase the
+ * exact number of escaping layers.
+ */
+const cleanDescription = (d) => (d ?? '').replaceAll('\\', '').trim();
+
 /** { [api_name]: percent } */
 async function fetchGlobalPct() {
 	const url = `https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/?gameid=${APPID}`;
@@ -148,6 +155,10 @@ for (const a of schema) {
 		metas.push({
 			id: a.id,
 			achievement: a.achievement,
+			// Steam's own wording, used as the subtitle on the vault display.
+			// The community-page source leaves escaped quotes in place; they
+			// would otherwise be emitted as a literal backslash-quote.
+			description: cleanDescription(a.description),
 			// "all of Vlad's contracts" / "all Classic contracts" / "all contracts"
 			scope: heist,
 			globalPct: metaPct,
@@ -240,6 +251,7 @@ const metaRows = metas
 			'\t{',
 			`\t\tid: ${quote(m.id)},`,
 			`\t\tachievement: ${quote(m.achievement)},`,
+			`\t\tdescription: ${quote(m.description)},`,
 			`\t\tscope: ${quote(m.scope)},`,
 			`\t\tglobalPct: ${m.globalPct},`,
 			`\t\ticon: ${quote(m.icon)},`,

@@ -711,6 +711,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'trk_cc_6',
 		achievement: '145+ Down',
+		description: 'Complete all Classic contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all Classic contracts',
 		globalPct: 3.2,
 		icon: '1bcb1915cb7097b9fc62f02fa306be2778db6e5f',
@@ -719,6 +720,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'ggez_1',
 		achievement: 'One More Down, No More To Go',
+		description: 'Complete all contracts on the Death Sentence difficulty with the One Down mechanic activated. Unlocks "The One Down Skull" mask.',
 		scope: 'all contracts',
 		globalPct: 3.5,
 		icon: 'f20b448368dcbe3640ae68d5c2de37b90025ee67',
@@ -727,6 +729,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'trk_ev_6',
 		achievement: 'And Now for Something Completely Different',
+		description: 'Complete all Event contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all Event contracts',
 		globalPct: 3.2,
 		icon: 'f19426d8479d1b7ca933e5a1cbe01c3c6419c5c1',
@@ -735,6 +738,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'axe_65',
 		achievement: 'Crime.net is My Homepage',
+		description: 'Complete all of Bain\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of Bain\'s contracts',
 		globalPct: 4.1,
 		icon: 'b8728cd0ca216eb988001678878e3412f41d88f8',
@@ -743,6 +747,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'trk_d_6',
 		achievement: 'Jaw Dropping',
+		description: 'Complete all of Dentist\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of Dentist\'s contracts',
 		globalPct: 3.2,
 		icon: '584f504e195d7ad64f09a20ecac8c5fd32d4e216',
@@ -751,6 +756,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'axe_63',
 		achievement: 'We Can Trust This Guy',
+		description: 'Complete all of Hector\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of Hector\'s contracts',
 		globalPct: 4.2,
 		icon: '64cd56ce046dfcd740fb1eeae51adf894a625be0',
@@ -759,6 +765,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'trk_j_6',
 		achievement: 'Take Out His Beating Heart, and Fucking Eat It!',
+		description: 'Complete all of Jimmy\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of Jimmy\'s contracts',
 		globalPct: 3.4,
 		icon: 'a43c103e47ff5f373544fec95a7388c527b3c659',
@@ -767,6 +774,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'trk_l_6',
 		achievement: 'Completed, Fo\' Sho\'',
+		description: 'Complete all of Locke\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of Locke\'s contracts',
 		globalPct: 3.2,
 		icon: '4e1c8baaba24855bacc0d94004c44ddaa0bfb14e',
@@ -775,6 +783,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'trk_cb_6',
 		achievement: 'Everybody Owes, Everybody Pays',
+		description: 'Complete all of The Butcher\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of The Butcher\'s contracts',
 		globalPct: 3.2,
 		icon: '367d31bc0bd866b93a4a606714ff95c421608434',
@@ -783,6 +792,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'trk_c_6',
 		achievement: 'Nobody is That Good...',
+		description: 'Complete all of The Continental\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of The Continental\'s contracts',
 		globalPct: 3.3,
 		icon: 'b95082bfdf6ef04f115d95e6abc94a1a6b09791a',
@@ -791,6 +801,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'axe_64',
 		achievement: 'Democracy at Work',
+		description: 'Complete all of the Elephants contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of the Elephants contracts',
 		globalPct: 4.1,
 		icon: '7ad5fa17554ffcd18f2a8991d5713586995faed1',
@@ -799,6 +810,7 @@ export const META_ACHIEVEMENTS = [
 	{
 		id: 'axe_62',
 		achievement: 'A Sad Vlad is Bad',
+		description: 'Complete all of Vlad\'s contracts on the Death Sentence difficulty with the One Down mechanic activated.',
 		scope: 'all of Vlad\'s contracts',
 		globalPct: 4,
 		icon: '08b882b53ed8c53c72f72c0dceca36201606578c',

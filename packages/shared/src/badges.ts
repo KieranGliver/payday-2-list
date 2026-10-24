@@ -15,6 +15,7 @@ export interface Badge {
 	readonly id: string;
 	readonly label: string;
 	readonly achievement: string;
+	readonly description: string;
 	readonly globalPct: number;
 	readonly icon: string;
 	readonly iconGray: string;
@@ -85,6 +86,7 @@ export function resolveBadges(
 			id: m.id,
 			label,
 			achievement: m.achievement,
+			description: m.description,
 			globalPct: m.globalPct,
 			icon: m.icon,
 			iconGray: m.iconGray,

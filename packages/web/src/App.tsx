@@ -97,7 +97,11 @@ export default function App() {
 				className="fog-grain"
 				aria-hidden
 			/>
-			<div className="relative z-10 mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+			{/* Generous vertical padding, tighter horizontal: the content is
+			    width-constrained anyway, and on a phone horizontal padding is
+			    space the table can ill afford. space-y-8 opens the gaps between
+			    sections to match. */}
+			<div className="relative z-10 mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6 sm:py-14">
 				<header className="flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<h1 className="text-2xl font-bold tracking-wide uppercase">

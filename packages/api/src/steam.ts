@@ -1,35 +1,63 @@
+import { z } from 'zod';
+
 /** Payday 2. */
 const APPID = 218620;
 
 const ENDPOINT =
 	'https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/';
 
+/**
+ * Steam is usually fast; this exists so a hung endpoint fails with a clear
+ * message instead of running into the Lambda's own 10s ceiling and dying as an
+ * opaque "Task timed out".
+ */
+const TIMEOUT_MS = 5_000;
+
+/** Why a player's data could not be read. Lets callers react differently. */
+export type SteamFailure =
+	/** Profile is private or game details are hidden. Permanent until the user changes it. */
+	| 'private'
+	/** Steam answered, but not with the shape we expect. */
+	| 'malformed'
+	/** Network, timeout, or an HTTP error. Likely transient. */
+	| 'unavailable';
+
 export class SteamError extends Error {
 	readonly steamId: string;
+	readonly kind: SteamFailure;
 
-	// Field assigned explicitly rather than via a constructor parameter
-	// property: those are not erasable syntax, which the web package's
-	// erasableSyntaxOnly check rejects.
-	constructor(message: string, steamId: string) {
+	// Fields assigned explicitly rather than via constructor parameter
+	// properties: those are not erasable syntax, which erasableSyntaxOnly
+	// rejects.
+	constructor(kind: SteamFailure, message: string, steamId: string) {
 		super(message);
 		this.name = 'SteamError';
+		this.kind = kind;
 		this.steamId = steamId;
 	}
 }
 
-interface RawAchievement {
-	readonly apiname: string;
-	readonly achieved: 0 | 1;
-	readonly unlocktime: number;
-}
+/**
+ * Steam's GetPlayerAchievements response.
+ *
+ * `achieved` is coerced from a number because Steam documents 0/1 and we rely
+ * on it: the previous `as RawResponse` cast meant that if Steam ever switched
+ * to booleans, every achievement would read as locked and every player would
+ * report 0/86 with no error at all - a confidently wrong answer.
+ */
+const achievementSchema = z.object({
+	apiname: z.string().min(1),
+	achieved: z.union([z.literal(0), z.literal(1)]),
+	unlocktime: z.number().int().nonnegative(),
+});
 
-interface RawResponse {
-	readonly playerstats?: {
-		readonly success?: boolean;
-		readonly error?: string;
-		readonly achievements?: readonly RawAchievement[];
-	};
-}
+const responseSchema = z.object({
+	playerstats: z.object({
+		success: z.boolean().optional(),
+		error: z.string().optional(),
+		achievements: z.array(achievementSchema).optional(),
+	}),
+});
 
 /** Maps a Steam achievement id to the unix time it was unlocked. */
 export type Unlocked = ReadonlyMap<string, number>;
@@ -44,9 +72,6 @@ export interface SteamClient {
  * Steam returns all ~1342 achievements with an `achieved` flag; we keep only
  * the unlocked ones and their `unlocktime`, which is why no completion history
  * needs storing anywhere.
- *
- * A profile with Game details set to anything but Public comes back with
- * `success: false` and an error string rather than an empty list.
  */
 export function createSteamClient(apiKey: string): SteamClient {
 	return {
@@ -58,26 +83,59 @@ export function createSteamClient(apiKey: string): SteamClient {
 
 			let res: Response;
 			try {
-				res = await fetch(url);
+				res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
 			} catch (cause) {
+				const timedOut =
+					cause instanceof Error && cause.name === 'TimeoutError';
 				throw new SteamError(
-					`network error reaching Steam: ${String(cause)}`,
+					'unavailable',
+					timedOut
+						? `Steam did not respond within ${TIMEOUT_MS}ms`
+						: 'could not reach Steam',
 					steamId,
 				);
 			}
 
 			if (!res.ok) {
 				// Never surface the URL - it contains the API key.
-				throw new SteamError(`Steam returned HTTP ${res.status}`, steamId);
+				throw new SteamError(
+					'unavailable',
+					`Steam returned HTTP ${res.status}`,
+					steamId,
+				);
 			}
 
-			// TODO: Need validation on the reponse shape.
-			const body = (await res.json()) as RawResponse;
-			const stats = body.playerstats;
-
-			if (!stats?.success) {
+			// A 200 carrying HTML or an empty body throws here. Previously this
+			// escaped as a raw SyntaxError and was shown beside the player's
+			// name, presenting a Steam infrastructure problem as that player's.
+			let body: unknown;
+			try {
+				body = await res.json();
+			} catch {
 				throw new SteamError(
-					stats?.error ?? 'Steam reported failure with no error message',
+					'malformed',
+					'Steam returned a non-JSON body',
+					steamId,
+				);
+			}
+
+			const parsed = responseSchema.safeParse(body);
+			if (!parsed.success) {
+				const [first] = parsed.error.issues;
+				throw new SteamError(
+					'malformed',
+					`unexpected response shape at ${first?.path.join('.') || '(root)'}`,
+					steamId,
+				);
+			}
+
+			const stats = parsed.data.playerstats;
+			if (!stats.success) {
+				// Steam reports a hidden profile this way rather than with an
+				// HTTP status.
+				throw new SteamError(
+					'private',
+					stats.error ?? 'profile is not public',
 					steamId,
 				);
 			}

@@ -99,6 +99,16 @@ async function fetchSchema() {
 	return out;
 }
 
+/**
+ * Smallest believable catalog size.
+ *
+ * Without a floor, a Steam change that breaks the community-page regex makes
+ * fetchSchema return [], every downstream check passes vacuously (the
+ * duplicate-id check becomes 0 !== 0), and the committed catalog is
+ * overwritten with an empty array while logging "wrote 0 heists" as success.
+ */
+const MIN_HEISTS = 80;
+
 /** { [api_name]: percent } */
 async function fetchGlobalPct() {
 	const url = `https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/?gameid=${APPID}`;
@@ -147,20 +157,58 @@ for (const a of schema) {
 	}
 	if (!(a.id in pct)) throw new Error(`no global percentage for ${a.id}`);
 	if (!a.icon || !a.iconGray) throw new Error(`missing icon hash for ${a.id}`);
+
+	// Number.isFinite, not a range check. Number('') and Number('x') both give
+	// NaN, and NaN fails BOTH `< 0` and `> 100` because every comparison with
+	// NaN is false. A NaN percentage would therefore pass a range test, emit as
+	// a valid `number` literal, compile, deploy, and render as "NaN%".
+	const percent = pct[a.id];
+	if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+		throw new Error(
+			`global percentage for ${a.id} is not a percentage: ${percent}`,
+		);
+	}
+
 	heists.push({
 		id: a.id,
 		heist,
 		achievement: a.achievement,
-		globalPct: pct[a.id],
+		globalPct: percent,
 		icon: a.icon,
 		iconGray: a.iconGray,
 	});
 }
 
-heists.sort((a, b) => a.heist.localeCompare(b.heist));
+// Pinned locale: the default depends on the build machine's ICU data, so row
+// order - and therefore the member order of the HeistId union, and the diff -
+// could differ between machines.
+heists.sort((a, b) => a.heist.localeCompare(b.heist, 'en'));
+
+// Everything below must run BEFORE writeFile. These checks previously ran
+// after, or not at all, so bad output reached disk and was only caught - if at
+// all - by a later compile.
+if (heists.length < MIN_HEISTS) {
+	throw new Error(
+		`only ${heists.length} heists found, expected at least ${MIN_HEISTS} - ` +
+			'refusing to overwrite the catalog. The upstream format has probably changed.',
+	);
+}
 
 const ids = new Set(heists.map((h) => h.id));
 if (ids.size !== heists.length) throw new Error('duplicate achievement ids');
+
+const names = new Set(heists.map((h) => h.heist));
+if (names.size !== heists.length) {
+	// Two rows with the same display name sort nondeterministically, because the
+	// tiebreaker in the UI is the name itself.
+	throw new Error('two heists parsed to the same display name');
+}
+
+for (const h of heists) {
+	if (!/^[0-9a-f]{40}$/.test(h.icon) || !/^[0-9a-f]{40}$/.test(h.iconGray)) {
+		throw new Error(`${h.id}: icon hash is not 40 hex characters`);
+	}
+}
 
 const zeroed = heists.filter((h) => h.globalPct === 0);
 

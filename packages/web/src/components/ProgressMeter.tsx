@@ -1,9 +1,12 @@
 import type { PlayerProgress } from '@pd2/shared';
+import { TriangleAlert } from 'lucide-react';
 
 interface Props {
 	readonly both: number;
 	readonly total: number;
 	readonly players: readonly PlayerProgress[];
+	/** How many players' data could not be read. */
+	readonly unreadable: number;
 }
 
 /**
@@ -16,7 +19,7 @@ interface Props {
  * Exactly one hero figure per view: the count cleared by both players, which
  * is the number actually being tracked.
  */
-export function ProgressMeter({ both, total, players }: Props) {
+export function ProgressMeter({ both, total, players, unreadable }: Props) {
 	const pct = total === 0 ? 0 : (both / total) * 100;
 
 	return (
@@ -29,7 +32,7 @@ export function ProgressMeter({ both, total, players }: Props) {
 			</h2>
 
 			{/* Hero figure: proportional figures, not tabular - tabular-nums makes a
-          large number look loose at display sizes. */}
+			    large number look loose at display sizes. */}
 			<p className="mt-1 flex items-baseline gap-2">
 				<span className="text-5xl font-semibold tracking-tight">{both}</span>
 				<span className="text-xl text-muted-foreground">/ {total}</span>
@@ -53,6 +56,24 @@ export function ProgressMeter({ both, total, players }: Props) {
 				/>
 			</div>
 
+			{/* An incomplete figure must say so. Previously a failed read was
+			    silently counted as "cleared nothing", so one private profile
+			    dragged this to zero with no indication anything was wrong.
+
+			    It is an UPPER bound, not a lower one: the figure counts heists
+			    every READABLE player has cleared, and adding the missing player
+			    back can only remove heists from that set, never add them. */}
+			{unreadable > 0 ? (
+				<p className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
+					<TriangleAlert
+						className="size-3.5 shrink-0"
+						aria-hidden
+					/>
+					Incomplete: {unreadable} of {players.length} profiles could not be
+					read, so the real figure is {both} or lower.
+				</p>
+			) : null}
+
 			<dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm">
 				{players.map((p) => (
 					<div
@@ -60,12 +81,16 @@ export function ProgressMeter({ both, total, players }: Props) {
 						className="flex items-baseline gap-2"
 					>
 						<dt className="text-muted-foreground">{p.name}</dt>
-						<dd className="font-medium tabular-nums">
-							{p.completed}/{total}
-						</dd>
-						{p.error ? (
-							<dd className="text-xs text-destructive">({p.error})</dd>
-						) : null}
+						{p.status === 'ok' ? (
+							<dd className="font-medium tabular-nums">
+								{p.completed}/{total}
+							</dd>
+						) : (
+							<>
+								<dd className="font-medium text-muted-foreground">unknown</dd>
+								<dd className="text-xs text-destructive">({p.reason})</dd>
+							</>
+						)}
 					</div>
 				))}
 			</dl>

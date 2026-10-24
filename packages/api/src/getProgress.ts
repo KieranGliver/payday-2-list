@@ -1,20 +1,22 @@
-import { CATALOG, type PlayerProgress, type ProgressResult } from '@pd2/shared';
+import {
+	CATALOG,
+	type Player,
+	type PlayerProgress,
+	type ProgressResult,
+} from '@pd2/shared';
+
 import { SteamError, type SteamClient } from './steam.js';
 
-export type { PlayerProgress, ProgressResult };
-
-export interface Player {
-	readonly steamId: string;
-	/** Steam persona name, used as the column label. */
-	readonly name: string;
-}
+export type { Player, PlayerProgress, ProgressResult };
 
 /**
  * One Down progress for each player.
  *
  * Steam is queried per player in parallel. A player whose profile is private
- * yields an `error` rather than failing the whole response, so one broken
- * profile doesn't blank the UI for everyone.
+ * yields a `failed` entry rather than failing the whole response, so one
+ * broken profile doesn't blank the UI for everyone - but it is returned as a
+ * distinct variant, not as a zero count, so consumers cannot mistake "could
+ * not read" for "has cleared nothing".
  *
  * Only achievements in the catalog are returned - Payday 2 has ~1342
  * achievements and we care about 86 of them.
@@ -33,20 +35,26 @@ export async function getProgress(
 					if (at !== undefined) mine[heist.id] = at;
 				}
 				return {
+					status: 'ok',
 					steamId: player.steamId,
 					name: player.name,
 					completed: Object.keys(mine).length,
 					unlocked: mine,
 				};
 			} catch (cause) {
-				const error =
-					cause instanceof SteamError ? cause.message : String(cause);
+				// Only SteamError messages are known to be safe to show. Anything
+				// else could carry internal detail, so it is logged and replaced.
+				if (!(cause instanceof SteamError)) {
+					console.error(`unexpected failure reading ${player.steamId}`, cause);
+				}
 				return {
+					status: 'failed',
 					steamId: player.steamId,
 					name: player.name,
-					completed: 0,
-					unlocked: {},
-					error,
+					reason:
+						cause instanceof SteamError
+							? cause.message
+							: 'could not read this profile',
 				};
 			}
 		}),

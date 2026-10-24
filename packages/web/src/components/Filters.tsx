@@ -4,7 +4,13 @@ import {
 	DIFFICULTIES,
 	type PlayerProgress,
 } from '@pd2/shared';
-import type { Completion, FilterState } from '@/lib/filters';
+import {
+	toApproach,
+	toCompletion,
+	toContractor,
+	toDifficulty,
+	type FilterState,
+} from '@/lib/filters';
 
 interface Props {
 	readonly value: FilterState;
@@ -41,9 +47,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
 				<select
 					className={field}
 					value={value.contractor}
-					onChange={(e) =>
-						set('contractor', e.target.value as FilterState['contractor'])
-					}
+					onChange={(e) => set('contractor', toContractor(e.target.value))}
 				>
 					<option value="all">All</option>
 					{CONTRACTORS.map((c) => (
@@ -64,9 +68,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
 				<select
 					className={field}
 					value={value.approach}
-					onChange={(e) =>
-						set('approach', e.target.value as FilterState['approach'])
-					}
+					onChange={(e) => set('approach', toApproach(e.target.value))}
 				>
 					<option value="all">All</option>
 					{APPROACHES.map((a) => (
@@ -87,9 +89,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
 				<select
 					className={field}
 					value={value.difficulty}
-					onChange={(e) =>
-						set('difficulty', e.target.value as FilterState['difficulty'])
-					}
+					onChange={(e) => set('difficulty', toDifficulty(e.target.value))}
 				>
 					<option value="all">All</option>
 					{DIFFICULTIES.map((d) => (
@@ -110,7 +110,9 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
 				<select
 					className={field}
 					value={value.completion}
-					onChange={(e) => set('completion', e.target.value as Completion)}
+					onChange={(e) =>
+						set('completion', toCompletion(e.target.value, players))
+					}
 				>
 					<option value="all">All</option>
 					<option value="both">Cleared by both</option>

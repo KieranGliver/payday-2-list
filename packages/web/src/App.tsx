@@ -1,4 +1,9 @@
-import { CATALOG, type PlayerProgress } from '@pd2/shared';
+import {
+	CATALOG,
+	hasCleared,
+	okPlayers,
+	type PlayerProgress,
+} from '@pd2/shared';
 import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Filters } from '@/components/Filters';
@@ -32,13 +37,35 @@ export default function App() {
 		[players, filters, sort],
 	);
 
+	/**
+	 * The denominator comes from the SERVER, not CATALOG.length.
+	 *
+	 * Built assets are served immutable, so a cached bundle can be talking to a
+	 * newer Lambda with a different catalog. Using the client's own count there
+	 * would render a numerator and denominator from two different catalogs and
+	 * quietly report the wrong percentage.
+	 */
+	const total = state.status === 'ready' ? state.data.total : CATALOG.length;
+
+	/**
+	 * Heists both players have cleared.
+	 *
+	 * Computed over players whose read SUCCEEDED. Counting a failed player as
+	 * "hasn't cleared it" is what previously drove this figure to zero whenever
+	 * one profile was private - a wrong answer presented as a real one. When
+	 * anyone failed, the figure is incomplete and says so.
+	 */
+	const ok = useMemo(() => okPlayers(players), [players]);
+	const unreadable = useMemo(
+		() => players.filter((p) => p.status === 'failed'),
+		[players],
+	);
 	const both = useMemo(
 		() =>
-			players.length === 0
+			ok.length === 0
 				? 0
-				: CATALOG.filter((h) => players.every((p) => h.id in p.unlocked))
-						.length,
-		[players],
+				: CATALOG.filter((h) => ok.every((p) => hasCleared(p, h.id))).length,
+		[ok],
 	);
 
 	/** Clicking the active column flips direction; a new column starts ascending. */
@@ -84,8 +111,9 @@ export default function App() {
 
 				<ProgressMeter
 					both={both}
-					total={CATALOG.length}
+					total={total}
 					players={players}
+					unreadable={unreadable.length}
 				/>
 
 				<Filters

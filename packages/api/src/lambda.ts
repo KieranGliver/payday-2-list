@@ -1,3 +1,5 @@
+import { ConfigError, type ApiError } from '@pd2/shared';
+
 import { resolveApiKey, resolvePlayers } from './config.js';
 import { getProgress } from './getProgress.js';
 import { createSteamClient } from './steam.js';
@@ -30,10 +32,21 @@ const json = (statusCode: number, body: unknown): LambdaResponse => ({
 	body: JSON.stringify(body),
 });
 
+const fail = (statusCode: number, error: ApiError): LambdaResponse =>
+	json(statusCode, error);
+
 export const handler = async (
 	event: FunctionUrlEvent,
 ): Promise<LambdaResponse> => {
-	const path = event.requestContext?.http?.path ?? '/';
+	const http = event.requestContext?.http;
+	const path = http?.path ?? '/';
+	const method = (http?.method ?? 'GET').toUpperCase();
+
+	// Only GET and HEAD reach Steam. Previously any method on any path
+	// triggered a live upstream call.
+	if (method !== 'GET' && method !== 'HEAD') {
+		return fail(405, { error: `${method} is not allowed`, code: 'unexpected' });
+	}
 
 	if (path.endsWith('/health')) {
 		return json(200, { ok: true, time: new Date().toISOString() });
@@ -44,9 +57,17 @@ export const handler = async (
 		const players = resolvePlayers();
 		return json(200, await getProgress(players, createSteamClient(apiKey)));
 	} catch (cause) {
-		// Configuration and unexpected failures. Per-player Steam errors are
-		// already folded into the successful response by getProgress.
 		console.error('getProgress failed', cause);
-		return json(500, { error: 'could not read progress' });
+
+		// Configuration faults are the operator's problem and their messages are
+		// safe to surface - they name an env var, never a secret value. Anything
+		// else stays generic, with detail only in CloudWatch.
+		if (cause instanceof ConfigError) {
+			return fail(500, { error: cause.message, code: 'misconfigured' });
+		}
+		return fail(502, {
+			error: 'could not read progress from Steam',
+			code: 'upstream_failed',
+		});
 	}
 };

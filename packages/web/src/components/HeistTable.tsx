@@ -1,5 +1,20 @@
-import { iconUrl, type Heist, type PlayerProgress } from '@pd2/shared';
-import { ArrowDown, ArrowUp, Check, ChevronsUpDown, Minus } from 'lucide-react';
+import {
+	hasCleared,
+	iconUrl,
+	unlockedAt,
+	type Approach,
+	type Heist,
+	type PerceivedDifficulty,
+	type PlayerProgress,
+} from '@pd2/shared';
+import {
+	ArrowDown,
+	ArrowUp,
+	Check,
+	ChevronsUpDown,
+	Minus,
+	CircleHelp,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
 	Table,
@@ -60,6 +75,18 @@ function SortButton({
  * never depends on colour alone. The unlock date is the cell's title, which is
  * why unlocktime is worth keeping in the payload.
  */
+function Unknown({ reason }: { reason: string }) {
+	return (
+		<span title={`Could not read this profile: ${reason}`}>
+			<CircleHelp
+				className="mx-auto size-4 text-destructive"
+				aria-hidden
+			/>
+			<span className="sr-only">Unknown - {reason}</span>
+		</span>
+	);
+}
+
 function Cleared({ at }: { at: number | undefined }) {
 	if (at === undefined) {
 		return (
@@ -86,21 +113,21 @@ function Cleared({ at }: { at: number | undefined }) {
 }
 
 /** Categorical hues, validated --pairs all against the theme surface. */
-const approachColor: Record<string, string> = {
+const approachColor: Record<Approach, string> = {
 	LOUD: 'var(--approach-loud)',
 	STEALTH: 'var(--approach-stealth)',
 	BOTH: 'var(--approach-both)',
 };
 
 /** Severity, so the reserved status palette rather than a fourth series hue. */
-const difficultyColor: Record<string, string> = {
+const difficultyColor: Record<PerceivedDifficulty, string> = {
 	EASY: 'var(--difficulty-easy)',
 	MEDIUM: 'var(--difficulty-medium)',
 	HARD: 'var(--difficulty-hard)',
 };
 
 const clearedByBoth = (heist: Heist, players: readonly PlayerProgress[]) =>
-	players.length > 0 && players.every((p) => heist.id in p.unlocked);
+	players.length > 0 && players.every((p) => hasCleared(p, heist.id));
 
 export function HeistTable({ heists, players, sort, onSort }: Props) {
 	return (
@@ -226,7 +253,14 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
 									key={p.steamId}
 									className="text-center"
 								>
-									<Cleared at={p.unlocked[h.id]} />
+									{/* A failed read renders as unknown, not as a dash. A dash
+									    means "we know they have not cleared this"; conflating
+									    the two is what let a private profile read as zero. */}
+									{p.status === 'failed' ? (
+										<Unknown reason={p.reason} />
+									) : (
+										<Cleared at={unlockedAt(p, h.id)} />
+									)}
 								</TableCell>
 							))}
 						</TableRow>

@@ -1,4 +1,9 @@
-import { DIFFICULTIES, type Heist, type PlayerProgress } from '@pd2/shared';
+import {
+	unlockedAt,
+	type Heist,
+	type PerceivedDifficulty,
+	type PlayerProgress,
+} from '@pd2/shared';
 
 export type SortKey =
 	| 'heist'
@@ -16,9 +21,19 @@ export interface SortState {
 /** Contractor, then heist name - the spreadsheet's original order. */
 export const INITIAL_SORT: SortState = { key: 'contractor', desc: false };
 
-/** EASY < MEDIUM < HARD, so difficulty sorts by severity not alphabetically. */
-const difficultyRank = (h: Heist) =>
-	DIFFICULTIES.indexOf(h.perceivedDifficulty);
+/**
+ * Severity order, declared here rather than inferred from the position of
+ * values in the DIFFICULTIES array. That array is a display list and nothing
+ * marks its order as meaningful, so reordering it for the filter dropdown
+ * would silently change how this column sorts.
+ */
+const DIFFICULTY_RANK: Record<PerceivedDifficulty, number> = {
+	EASY: 0,
+	MEDIUM: 1,
+	HARD: 2,
+};
+
+const difficultyRank = (h: Heist) => DIFFICULTY_RANK[h.perceivedDifficulty];
 
 function value(
 	heist: Heist,
@@ -40,8 +55,9 @@ function value(
 			const steamId = key.slice('player:'.length);
 			const player = players.find((p) => p.steamId === steamId);
 			// Unlock time doubles as the sort value, so a player column orders by
-			// when each heist was cleared. Uncleared sorts last either way.
-			return player?.unlocked[heist.id] ?? -1;
+			// when each heist was cleared. Uncleared - and unknown, for a player
+			// whose read failed - both sort last.
+			return player ? (unlockedAt(player, heist.id) ?? -1) : -1;
 		}
 	}
 }

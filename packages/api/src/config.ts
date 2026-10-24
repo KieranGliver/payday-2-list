@@ -1,7 +1,21 @@
-import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
-import type { Player } from './getProgress.js';
+import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
+import { ConfigError, parsePlayers, type Player } from '@pd2/shared';
 
 let cachedKey: string | undefined;
+
+/** Steam web API keys are 32 hex characters. */
+const API_KEY_PATTERN = /^[0-9A-Fa-f]{32}$/;
+
+function assertUsableKey(value: string, source: string): string {
+	const key = value.trim();
+	// A truncated or whitespace-padded key previously passed the old
+	// truthiness check, then produced a per-player HTTP 403 - which reads as
+	// "that profile is private" rather than "your key is wrong".
+	if (!API_KEY_PATTERN.test(key)) {
+		throw new ConfigError(`${source} is not a 32-character Steam API key`);
+	}
+	return key;
+}
 
 /**
  * Resolves the Steam Web API key.
@@ -13,14 +27,16 @@ export async function resolveApiKey(): Promise<string> {
 	if (cachedKey) return cachedKey;
 
 	const direct = process.env['STEAM_API_KEY'];
-	if (direct) {
-		cachedKey = direct;
+	if (direct?.trim()) {
+		cachedKey = assertUsableKey(direct, 'STEAM_API_KEY');
 		return cachedKey;
 	}
 
 	const name = process.env['STEAM_API_KEY_PARAM'];
 	if (!name) {
-		throw new Error('neither STEAM_API_KEY nor STEAM_API_KEY_PARAM is set');
+		throw new ConfigError(
+			'neither STEAM_API_KEY nor STEAM_API_KEY_PARAM is set',
+		);
 	}
 
 	const ssm = new SSMClient({});
@@ -28,37 +44,19 @@ export async function resolveApiKey(): Promise<string> {
 		new GetParameterCommand({ Name: name, WithDecryption: true }),
 	);
 	const value = res.Parameter?.Value;
-	if (!value) throw new Error(`SSM parameter ${name} is empty`);
+	if (!value) throw new ConfigError(`SSM parameter ${name} is empty`);
 
-	cachedKey = value;
+	cachedKey = assertUsableKey(value, `SSM parameter ${name}`);
 	return cachedKey;
 }
 
 /**
- * Players to report on, from PD2_PLAYERS as `steamid:name` pairs:
- *
- *   PD2_PLAYERS=76561198103504838:yogizmo,76561198096708910:Eggsenbacon
+ * Players to report on.
  *
  * Server-side config rather than a query parameter, so the endpoint can't be
- * used to look up arbitrary Steam profiles on our API quota.
+ * used to look up arbitrary Steam profiles on our API quota. The parser lives
+ * in @pd2/shared so the Vite dev middleware uses exactly the same one.
  */
 export function resolvePlayers(): readonly Player[] {
-	const raw = process.env['PD2_PLAYERS'];
-	if (!raw) throw new Error('PD2_PLAYERS is not set');
-
-	const players = raw
-		.split(',')
-		.map((entry) => entry.trim())
-		.filter(Boolean)
-		.map((entry) => {
-			const [steamId, ...rest] = entry.split(':');
-			const name = rest.join(':').trim();
-			if (!steamId || !name) {
-				throw new Error(`PD2_PLAYERS entry is not "steamid:name": ${entry}`);
-			}
-			return { steamId: steamId.trim(), name };
-		});
-
-	if (players.length === 0) throw new Error('PD2_PLAYERS contained no entries');
-	return players;
+	return parsePlayers(process.env['PD2_PLAYERS']);
 }

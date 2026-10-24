@@ -15,5 +15,6 @@ export {
 	createSteamClient,
 	SteamError,
 	type SteamClient,
+	type SteamFailure,
 	type Unlocked,
 } from './steam.js';

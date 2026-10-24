@@ -1,9 +1,23 @@
-import type { ProgressResult } from '@pd2/shared';
+import {
+	apiErrorSchema,
+	ContractError,
+	parseProgressResult,
+	type ProgressResult,
+} from '@pd2/shared';
 import { useCallback, useEffect, useState } from 'react';
+
+/** Why the fetch failed, so the UI can say something useful. */
+export type FailureKind =
+	/** Could not reach the API at all. */
+	| 'network'
+	/** The API answered with its error envelope. */
+	| 'api'
+	/** The API answered, but not with the shape we expect. */
+	| 'contract';
 
 type State =
 	| { status: 'loading' }
-	| { status: 'error'; message: string }
+	| { status: 'error'; kind: FailureKind; message: string }
 	| { status: 'ready'; data: ProgressResult };
 
 /**
@@ -25,15 +39,44 @@ export function useProgress() {
 		async (signal?: AbortSignal): Promise<State | null> => {
 			try {
 				const res = await fetch('/api/progress', { signal, cache: 'no-store' });
-				if (!res.ok) throw new Error(`API returned ${res.status}`);
-				const data = (await res.json()) as ProgressResult | { error: string };
-				if ('error' in data) throw new Error(data.error);
-				return { status: 'ready', data };
+
+				// The body is read BEFORE checking res.ok. Throwing on the status
+				// first meant the API's own error envelope was never read, so every
+				// server-side failure showed as a bare "API returned 500" and the
+				// real reason stayed in CloudWatch.
+				let body: unknown;
+				try {
+					body = await res.json();
+				} catch {
+					return {
+						status: 'error',
+						kind: res.ok ? 'contract' : 'network',
+						message: `API returned ${res.status} with a non-JSON body`,
+					};
+				}
+
+				if (!res.ok) {
+					const err = apiErrorSchema.safeParse(body);
+					return {
+						status: 'error',
+						kind: 'api',
+						message: err.success
+							? err.data.error
+							: `API returned ${res.status}`,
+					};
+				}
+
+				return { status: 'ready', data: parseProgressResult(body) };
 			} catch (cause) {
 				if (signal?.aborted) return null;
+				if (cause instanceof ContractError) {
+					return { status: 'error', kind: 'contract', message: cause.message };
+				}
 				return {
 					status: 'error',
-					message: cause instanceof Error ? cause.message : String(cause),
+					kind: 'network',
+					message:
+						cause instanceof Error ? cause.message : 'could not reach the API',
 				};
 			}
 		},

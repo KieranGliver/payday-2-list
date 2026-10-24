@@ -136,11 +136,11 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
        shadcn's Table already provides the overflow-x-auto scroller, so this
        wrapper must not add a second one. min-w-max lets the table size to its
        content and overflow that scroller instead of compressing to fit. */
-		<div className="rounded-md border">
+		<div className="rounded-md border bg-card">
 			<Table className="min-w-max">
 				<TableHeader>
 					<TableRow>
-						<TableHead className="sticky left-0 z-10 min-w-60 border-r bg-background">
+						<TableHead className="sticky left-0 z-10 min-w-60 border-r bg-card">
 							<SortButton
 								label="Heist"
 								columnKey="heist"
@@ -200,7 +200,7 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
 				<TableBody>
 					{heists.map((h) => (
 						<TableRow key={h.id}>
-							<TableCell className="sticky left-0 z-10 border-r bg-background font-medium">
+							<TableCell className="sticky left-0 z-10 border-r bg-card font-medium">
 								<div className="flex items-center gap-2.5">
 									{/* Decorative: the heist name sits right beside it, so an alt
                       text would just be read out twice. Colour art once both

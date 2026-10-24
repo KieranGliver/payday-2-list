@@ -79,8 +79,18 @@ export default function App() {
 		);
 
 	return (
-		<div className="min-h-dvh bg-background text-foreground">
-			<div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+		<div className="min-h-dvh text-foreground">
+			{/* Behind all content, inert to pointers. Anything that must stay
+			    readable over it sets its own opaque background. */}
+			<div
+				className="fog"
+				aria-hidden
+			/>
+			<div
+				className="fog-grain"
+				aria-hidden
+			/>
+			<div className="relative z-10 mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
 				<header className="flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<h1 className="text-2xl font-bold tracking-wide uppercase">

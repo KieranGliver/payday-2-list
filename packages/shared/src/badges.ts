@@ -10,6 +10,7 @@ import { BADGE_LABELS } from './curated/badges.js';
 import { META_ACHIEVEMENTS } from './generated/steam.js';
 import { CATALOG } from './catalog.js';
 import { hasCleared, okPlayers, type PlayerProgress } from './api.js';
+import type { Contractor } from './types.js';
 
 export interface Badge {
 	readonly id: string;
@@ -47,6 +48,12 @@ export interface Badge {
 	 * hardcode a Steam achievement id.
 	 */
 	readonly isEverything: boolean;
+	/**
+	 * The contractor this badge covers, or null for the everything badge.
+	 * Lets the badge wall drive the contractor filter without the UI mapping
+	 * Steam achievement ids to contractor names itself.
+	 */
+	readonly contractor: Contractor | null;
 }
 
 /** Resolves each badge against the current player data. */
@@ -96,6 +103,7 @@ export function resolveBadges(
 			done,
 			of: ours.length,
 			isEverything: contractor === null,
+			contractor,
 		};
 	});
 }

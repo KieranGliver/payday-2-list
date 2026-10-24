@@ -14,7 +14,16 @@
  * Uses the official GetSchemaForGame endpoint when STEAM_API_KEY is set,
  * otherwise falls back to parsing the public community achievements page.
  */
-import { writeFile, readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+
+import {
+	iconHash,
+	isMeta,
+	isOneDown,
+	parseHeistName,
+	quote,
+	toPercent,
+} from './lib/parse.mjs';
 
 const APPID = 218620;
 const OUT = new URL(
@@ -25,30 +34,6 @@ const RATINGS = new URL(
 	'../packages/shared/src/curated/ratings.ts',
 	import.meta.url,
 );
-
-/**
- * Marks a One Down achievement.
- *
- * Steam uses at least three phrasings ("with the One Down mechanic activated",
- * the same plus a mask unlock note, and "with One Down active"), so matching an
- * exact phrase silently drops heists. Requiring both keywords is stable: of
- * 1342 achievements, 98 mention "One Down" and all 98 also mention "Death
- * Sentence", while 98 others mention Death Sentence alone (the plain difficulty
- * tier, correctly excluded) and none mention One Down alone.
- */
-const isOneDown = (description) =>
-	description.includes('Death Sentence') && description.includes('One Down');
-
-/**
- * Steam serves the same icon from several CDN hosts (akamai, fastly,
- * cloudflare) with byte-identical content, and the two schema sources return
- * different hosts. Only the 40-char hash is stable, so that is what the
- * catalog stores; the URL is rebuilt in the app.
- */
-const iconHash = (url) => /([0-9a-f]{40})\.jpg/.exec(url ?? '')?.[1] ?? null;
-
-/** Achievements for completing a whole contractor's set, not a single heist. */
-const isMeta = (name) => name.startsWith('all ');
 
 async function fetchJson(url) {
 	const res = await fetch(url);
@@ -126,11 +111,6 @@ async function fetchGlobalPct() {
  * "Diamond Heist" (Classic). Both would collapse to "Diamond" if the word
  * "Heist" were stripped too.
  */
-function parseHeistName(description) {
-	const m = /^Complete (.+?) on the Death Sentence/i.exec(description.trim());
-	if (!m) return null;
-	return m[1].replace(/^the /, '').replace(/ job$/, '').trim();
-}
 
 async function existingRatingIds() {
 	try {
@@ -158,14 +138,10 @@ for (const a of schema) {
 	if (!(a.id in pct)) throw new Error(`no global percentage for ${a.id}`);
 	if (!a.icon || !a.iconGray) throw new Error(`missing icon hash for ${a.id}`);
 
-	// Number.isFinite, not a range check. Number('') and Number('x') both give
-	// NaN, and NaN fails BOTH `< 0` and `> 100` because every comparison with
-	// NaN is false. A NaN percentage would therefore pass a range test, emit as
-	// a valid `number` literal, compile, deploy, and render as "NaN%".
-	const percent = pct[a.id];
-	if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+	const percent = toPercent(pct[a.id]);
+	if (percent === null) {
 		throw new Error(
-			`global percentage for ${a.id} is not a percentage: ${percent}`,
+			`global percentage for ${a.id} is not a percentage: ${pct[a.id]}`,
 		);
 	}
 
@@ -215,20 +191,16 @@ const zeroed = heists.filter((h) => h.globalPct === 0);
 // Emitted stacked and tab-indented to match curated/ratings.ts. Prettier is
 // configured with objectWrap "preserve", so a stacked object stays stacked -
 // but this file is in .prettierignore anyway, to keep regeneration a no-op.
-// Single-quoted JS string literal with proper escaping. A blunt
-// JSON.stringify().replace('"', "'") breaks on names containing an
-// apostrophe, e.g. Breakin' Feds or Hell's Island.
-const q = (v) => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 const rows = heists
 	.map((h) =>
 		[
 			'\t{',
-			`\t\tid: ${q(h.id)},`,
-			`\t\theist: ${q(h.heist)},`,
-			`\t\tachievement: ${q(h.achievement)},`,
+			`\t\tid: ${quote(h.id)},`,
+			`\t\theist: ${quote(h.heist)},`,
+			`\t\tachievement: ${quote(h.achievement)},`,
 			`\t\tglobalPct: ${h.globalPct},`,
-			`\t\ticon: ${q(h.icon)},`,
-			`\t\ticonGray: ${q(h.iconGray)},`,
+			`\t\ticon: ${quote(h.icon)},`,
+			`\t\ticonGray: ${quote(h.iconGray)},`,
 			'\t},',
 		].join('\n'),
 	)

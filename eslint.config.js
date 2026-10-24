@@ -38,6 +38,19 @@ export default defineConfig([
 	{
 		files: ['**/*.{ts,tsx}'],
 		extends: [js.configs.recommended, tseslint.configs.recommended],
+		rules: {
+			// Honour the leading-underscore convention, which TypeScript's own
+			// noUnusedParameters already does. Without this the two disagree:
+			// tsc accepts a deliberately-unused `_init` and eslint rejects it.
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					caughtErrorsIgnorePattern: '^_',
+				},
+			],
+		},
 	},
 
 	// The browser half.

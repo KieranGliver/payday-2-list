@@ -115,7 +115,7 @@ function parseHeistName(description) {
 async function existingRatingIds() {
   try {
     const src = await readFile(RATINGS, 'utf8');
-    return new Set([...src.matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((m) => m[1]));
+    return new Set([...src.matchAll(/^\t([A-Za-z0-9_]+):/gm)].map((m) => m[1]));
   } catch {
     return null;
   }
@@ -150,10 +150,22 @@ if (ids.size !== heists.length) throw new Error('duplicate achievement ids');
 
 const zeroed = heists.filter((h) => h.globalPct === 0);
 
+// Emitted stacked and tab-indented to match curated/ratings.ts. Prettier is
+// configured with objectWrap "preserve", so a stacked object stays stacked -
+// but this file is in .prettierignore anyway, to keep regeneration a no-op.
+const q = (v) => JSON.stringify(v).replace(/"/g, "'");
 const rows = heists
-  .map(
-    (h) =>
-      `  { id: ${JSON.stringify(h.id)}, heist: ${JSON.stringify(h.heist)}, achievement: ${JSON.stringify(h.achievement)}, globalPct: ${h.globalPct}, icon: ${JSON.stringify(h.icon)}, iconGray: ${JSON.stringify(h.iconGray)} },`,
+  .map((h) =>
+    [
+      '\t{',
+      `\t\tid: ${q(h.id)},`,
+      `\t\theist: ${q(h.heist)},`,
+      `\t\tachievement: ${q(h.achievement)},`,
+      `\t\tglobalPct: ${h.globalPct},`,
+      `\t\ticon: ${q(h.icon)},`,
+      `\t\ticonGray: ${q(h.iconGray)},`,
+      '\t},',
+    ].join('\n'),
   )
   .join('\n');
 

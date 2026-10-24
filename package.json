@@ -10,8 +10,21 @@
     "dev": "npm run dev -w @pd2/web",
     "build": "npm run build -w @pd2/web",
     "preview": "npm run preview -w @pd2/web",
-    "lint": "npm run lint -w @pd2/web",
+    "lint": "eslint .",
     "sync:steam": "node scripts/sync-steam.mjs",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "typescript-eslint": "^8.72.0"
   }
 }

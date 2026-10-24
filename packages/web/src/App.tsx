@@ -9,6 +9,7 @@ import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { BadgeWall } from '@/components/BadgeWall';
 import { Filters } from '@/components/Filters';
+import { VaultHero } from '@/components/VaultHero';
 import { HeistTable } from '@/components/HeistTable';
 import { ProgressMeter } from '@/components/ProgressMeter';
 import { Button } from '@/components/ui/button';
@@ -70,7 +71,14 @@ export default function App() {
 		[ok],
 	);
 
-	const badges = useMemo(() => resolveBadges(players), [players]);
+	const allBadges = useMemo(() => resolveBadges(players), [players]);
+	// The everything badge gets its own stage above the meter; the rest stay
+	// on the wall.
+	const everything = allBadges.find((b) => b.isEverything);
+	const badges = useMemo(
+		() => allBadges.filter((b) => !b.isEverything),
+		[allBadges],
+	);
 
 	/** Clicking the active column flips direction; a new column starts ascending. */
 	const onSort = (key: SortKey) =>
@@ -122,6 +130,14 @@ export default function App() {
 						Refresh
 					</Button>
 				</header>
+
+				{everything ? (
+					<VaultHero
+						badge={everything}
+						done={both}
+						total={total}
+					/>
+				) : null}
 
 				<ProgressMeter
 					both={both}

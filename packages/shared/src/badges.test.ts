@@ -89,6 +89,14 @@ describe('resolveBadges', () => {
 		expect(badgeTally(badges)).toEqual({ earned: 1, total: badges.length });
 	});
 
+	// The vault hero picks this one out by flag rather than by hardcoding a
+	// Steam achievement id in the UI.
+	it('flags exactly one badge as spanning everything', () => {
+		const all = resolveBadges([]);
+		expect(all.filter((b) => b.isEverything)).toHaveLength(1);
+		expect(all.find((b) => b.isEverything)?.label).toBe('Everything');
+	});
+
 	it('covers every meta achievement with a label', () => {
 		for (const b of resolveBadges([])) {
 			expect(b.label.length, b.id).toBeGreaterThan(0);

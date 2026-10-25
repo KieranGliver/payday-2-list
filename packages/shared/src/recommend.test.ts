@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { recommend, topFactors, WEIGHTS } from './recommend.js';
+import {
+	leastRecommended,
+	recommend,
+	topFactors,
+	weakestFactors,
+	WEIGHTS,
+	type Recommendation,
+} from './recommend.js';
 import type { Badge } from './badges.js';
 import type { PlayerProgress } from './api.js';
 import type { Heist } from './types.js';
@@ -117,6 +124,36 @@ describe('recommend', () => {
 	});
 
 	describe('contractor proximity', () => {
+		/**
+		 * The real case this rule got wrong. Bain sits at 11/20 and The
+		 * Continental at 1/2, so by fraction Bain scores 0.55 against 0.50 and
+		 * the contractor NINE heists away outranks the one a single heist
+		 * away. Scoring on heists remaining puts that right.
+		 *
+		 * A fixture where the two rules happen to agree proves nothing here -
+		 * these numbers are chosen so they disagree on the order.
+		 */
+		it('prefers the contractor fewer heists from a badge, not the larger fraction', () => {
+			const rows = pair(
+				{ contractor: 'Bain' },
+				{ contractor: 'The Continental' },
+			);
+			const badges = [
+				badge({ contractor: 'Bain', done: 11, of: 20 }),
+				badge({ id: 'c', contractor: 'The Continental', done: 1, of: 2 }),
+			];
+			const recs = recommend(rows, PLAYERS, badges, { limit: 2 });
+			expect(recs[0]?.heist.contractor).toBe('The Continental');
+			expect(recs[0]?.factors.proximity).toBeCloseTo(1, 10);
+			expect(recs[1]?.factors.proximity).toBeCloseTo(1 / 9, 10);
+		});
+
+		it('scores a badge one heist away at the maximum', () => {
+			const rows = [heist({ id: 'a', contractor: 'Bain' })];
+			const one = [badge({ done: 3, of: 4 })];
+			expect(recommend(rows, PLAYERS, one)[0]?.factors.proximity).toBe(1);
+		});
+
 		// An earned badge has nothing left to win, so it must stop lifting its
 		// own heists above everything else.
 		it('stops counting once the badge is earned', () => {
@@ -235,22 +272,127 @@ describe('recommend', () => {
 	describe('the ladder term', () => {
 		// The pair is as ready as its less experienced half. Averaging would
 		// call a heist one of us has never loaded "half done".
-		it('takes the minimum across players, not the average', () => {
+		/**
+		 * The weakest half dominates: a heist we have BOTH taken to Mayhem
+		 * beats one a single player has taken to Death Sentence and the other
+		 * has never loaded.
+		 *
+		 *   both at 5 -> (5 + 5 + 5) / 3 = 5.00
+		 *   7 and 0   -> (7 + 0 + 0) / 3 = 2.33
+		 */
+		it('lets the least experienced half dominate', () => {
 			const rows = pair({}, {});
 			const players = [
-				// a: rungs 7 and 1 -> min 1, mean 4.
-				// b: rungs 3 and 3 -> min 3, mean 3.
-				// The two rules disagree on the ORDER here, which is the only way
-				// this test can tell them apart - picking numbers where min and
-				// mean happen to rank the same way asserts nothing.
-				player(R, { ladder: { a: 7, b: 3 } }),
-				player(K, { ladder: { a: 1, b: 3 } }),
+				player(R, { ladder: { a: 7, b: 5 } }),
+				player(K, { ladder: { a: 0, b: 5 } }),
 			];
 			const [first, second] = recommend(rows, players, [], { limit: 2 });
 			expect(first?.heist.id).toBe('b');
-			expect(second?.heist.id).toBe('a');
-			expect(first?.factors.closeness).toBeCloseTo(3 / 7, 10);
+			expect(first?.factors.closeness).toBeCloseTo(5 / 7, 10);
+			expect(second?.factors.closeness).toBeCloseTo(7 / 3 / 7, 10);
+		});
+
+		/**
+		 * ...but one player knowing the map is no longer thrown away. A plain
+		 * minimum scored these identically, because both have a floor of 1.
+		 *
+		 *   5 and 1 -> (5 + 1 + 1) / 3 = 2.33
+		 *   1 and 1 -> (1 + 1 + 1) / 3 = 1.00
+		 */
+		it('credits the player who has taken it further', () => {
+			const rows = pair({}, {});
+			const players = [
+				player(R, { ladder: { a: 5, b: 1 } }),
+				player(K, { ladder: { a: 1, b: 1 } }),
+			];
+			const [first, second] = recommend(rows, players, [], { limit: 2 });
+			expect(first?.heist.id).toBe('a');
+			expect(first?.factors.closeness).toBeCloseTo(7 / 3 / 7, 10);
 			expect(second?.factors.closeness).toBeCloseTo(1 / 7, 10);
+		});
+
+		it('is unchanged when both players are level', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 6 } }),
+				player(K, { ladder: { a: 6 } }),
+			];
+			expect(recommend(rows, players, [])[0]?.factors.closeness).toBeCloseTo(
+				6 / 7,
+				10,
+			);
+		});
+
+		it("reports every player's own rung, furthest first", () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 7 } }),
+				player(K, { ladder: { a: 2 } }),
+			];
+			const [rec] = recommend(rows, players, []);
+			expect(rec?.rung).toBe(2);
+			expect(rec?.perPlayer).toEqual([
+				{ name: 'yogizmo', rung: 7 },
+				{ name: 'Eggsenbacon', rung: 2 },
+			]);
+		});
+
+		// Deliberately the SECOND player in the list. With the leader always
+		// first, "sort by rung" and "leave as given" are the same thing and
+		// the assertion proves nothing.
+		it('orders by rung, not by the order players were given in', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 2 } }),
+				player(K, { ladder: { a: 7 } }),
+			];
+			expect(recommend(rows, players, [])[0]?.perPlayer).toEqual([
+				{ name: 'Eggsenbacon', rung: 7 },
+				{ name: 'yogizmo', rung: 2 },
+			]);
+		});
+
+		it('keeps a player who has never finished it, at rung 0', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 6 } }),
+				player(K, { ladder: { a: 0 } }),
+			];
+			const [rec] = recommend(rows, players, []);
+			expect(rec?.rung).toBe(0);
+			expect(rec?.perPlayer).toEqual([
+				{ name: 'yogizmo', rung: 6 },
+				{ name: 'Eggsenbacon', rung: 0 },
+			]);
+		});
+
+		// A failed read is absent entirely rather than appearing at rung 0.
+		it('leaves an unreadable player out of the breakdown', () => {
+			const rows = [heist({ id: 'a' })];
+			const players: PlayerProgress[] = [
+				player(R, { ladder: { a: 6 } }),
+				{
+					status: 'failed',
+					steamId: K,
+					name: 'Eggsenbacon',
+					reason: 'private',
+				},
+			];
+			expect(recommend(rows, players, [])[0]?.perPlayer).toEqual([
+				{ name: 'yogizmo', rung: 6 },
+			]);
+		});
+
+		it('is unchanged when both players are level', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 6 } }),
+				player(K, { ladder: { a: 6 } }),
+			];
+			expect(recommend(rows, players, [])[0]?.factors.closeness).toBeCloseTo(
+				6 / 7,
+				10,
+			);
 		});
 
 		it('maps the top rung to a full score', () => {
@@ -264,8 +406,47 @@ describe('recommend', () => {
 	});
 
 	describe('scoring mechanics', () => {
-		it('weights brevity below the full-weight terms', () => {
+		// Neither should be able to decide the order on its own. Proximity
+		// especially: scored as 1 / remaining, a single heist from a badge hits
+		// the maximum, and at full weight that one fact outweighed everything
+		// we actually know about the heist.
+		it('weights brevity and proximity below the full-weight terms', () => {
 			expect(WEIGHTS.brevity).toBeLessThan(WEIGHTS.ease);
+			expect(WEIGHTS.proximity).toBeLessThan(WEIGHTS.ease);
+			expect(WEIGHTS.proximity).toBeLessThan(WEIGHTS.closeness);
+		});
+
+		/**
+		 * The point of the reduced weight: a badge one heist away must not beat
+		 * a heist that is better on everything we judge ourselves. Here the
+		 * second heist is easier, shorter and one we have both already cleared
+		 * on Death Sentence, against a HARD three-day heist nobody has touched.
+		 */
+		it('does not let a nearly-finished badge outweigh everything else', () => {
+			const rows = [
+				heist({
+					id: 'badge',
+					heist: 'Badge',
+					contractor: 'Bain',
+					perceivedDifficulty: 'HARD',
+					days: 3,
+				}),
+				heist({
+					id: 'better',
+					heist: 'Better',
+					contractor: 'Vlad',
+					perceivedDifficulty: 'EASY',
+					days: 1,
+				}),
+			];
+			const players = [
+				player(R, { ladder: { badge: 0, better: 7 } }),
+				player(K, { ladder: { badge: 0, better: 7 } }),
+			];
+			const badges = [badge({ contractor: 'Bain', done: 3, of: 4 })];
+			expect(recommend(rows, players, badges, { limit: 2 })[0]?.heist.id).toBe(
+				'better',
+			);
 		});
 
 		it('sums the weighted contributions into the score', () => {
@@ -319,6 +500,71 @@ describe('recommend', () => {
 				recs.find((r) => r.heist.id === id)?.factors.rarity;
 			expect(rarityOf(after, 'b')).toBe(rarityOf(open, 'b'));
 			expect(rarityOf(after, 'c')).toBe(rarityOf(open, 'c'));
+		});
+	});
+
+	describe('the casual-era discount', () => {
+		/**
+		 * Real ids, because the discount reads generated/ladder.ts. These two
+		 * are the case the discount exists for: Hoxton Breakout has the HIGHER
+		 * One Down figure, but 21.3% of all owners have beaten it on Normal
+		 * against The Biker Heist's 7.7%, so most of that figure is twelve
+		 * years of casual players rather than the heist being easier.
+		 *
+		 *   Hoxton Breakout  4.5% x (1 - 0.213) = 3.54
+		 *   The Biker Heist  4.2% x (1 - 0.077) = 3.88
+		 *
+		 * Without the discount the order is the other way round.
+		 */
+		const HOXTON_BREAKOUT = 'axe_34';
+		const BIKER_HEIST = 'axe_57';
+
+		const rarityOf = (recs: readonly Recommendation[], id: string) =>
+			recs.find((r) => r.heist.id === id)?.factors.rarity;
+
+		it('ranks a late heist above a launch heist with a higher raw figure', () => {
+			const rows = [
+				heist({
+					id: HOXTON_BREAKOUT,
+					heist: 'Hoxton Breakout',
+					globalPct: 4.5,
+				}),
+				heist({ id: BIKER_HEIST, heist: 'The Biker Heist', globalPct: 4.2 }),
+			];
+			const recs = recommend(rows, PLAYERS, [], { limit: 2 });
+			expect(recs[0]?.heist.id).toBe(BIKER_HEIST);
+			expect(rarityOf(recs, BIKER_HEIST)!).toBeGreaterThan(
+				rarityOf(recs, HOXTON_BREAKOUT)!,
+			);
+		});
+
+		// It must reorder the middle without inverting the scale: a genuinely
+		// high completion rate still beats a low one when both are late heists.
+		it('still ranks a higher figure first when exposure is comparable', () => {
+			const rows = [
+				heist({ id: BIKER_HEIST, heist: 'The Biker Heist', globalPct: 1 }),
+				heist({ id: 'fex_8', heist: "Buluc's Mansion", globalPct: 9 }),
+			];
+			expect(recommend(rows, PLAYERS, [], { limit: 2 })[0]?.heist.id).toBe(
+				'fex_8',
+			);
+		});
+
+		/**
+		 * A heist with no ladder data must keep its figure untouched. Reading a
+		 * missing entry as 0% played would hand it a x1.0 multiplier by luck;
+		 * reading it as 100% would erase the figure entirely. Both are wrong
+		 * for the same reason - no information is not a measurement.
+		 */
+		it('does not discount a heist with no ladder data', () => {
+			const rows = [
+				heist({ id: 'not_in_the_ladder', heist: 'A', globalPct: 9 }),
+				heist({ id: 'also_missing', heist: 'B', globalPct: 1 }),
+			];
+			const recs = recommend(rows, PLAYERS, [], { limit: 2 });
+			expect(recs[0]?.heist.id).toBe('not_in_the_ladder');
+			expect(rarityOf(recs, 'not_in_the_ladder')).toBe(1);
+			expect(rarityOf(recs, 'also_missing')).toBe(0);
 		});
 	});
 
@@ -410,6 +656,107 @@ describe('recommend', () => {
 			const rows = [heist({ id: 'a', contractor: 'Bain' })];
 			const earned = [badge({ earned: true, done: 4, of: 4 })];
 			expect(recommend(rows, PLAYERS, earned)[0]?.contractorLeft).toBeNull();
+		});
+	});
+
+	describe('leastRecommended', () => {
+		const rows = [
+			heist({
+				id: 'best',
+				heist: 'Best',
+				perceivedDifficulty: 'EASY',
+				days: 1,
+			}),
+			heist({
+				id: 'mid',
+				heist: 'Mid',
+				perceivedDifficulty: 'MEDIUM',
+				days: 1,
+			}),
+			heist({
+				id: 'worst',
+				heist: 'Worst',
+				perceivedDifficulty: 'HARD',
+				days: 3,
+			}),
+		];
+
+		it('returns the lowest scorers, worst first', () => {
+			expect(ids(leastRecommended(rows, PLAYERS, [], { limit: 3 }))).toEqual([
+				'worst',
+				'mid',
+				'best',
+			]);
+		});
+
+		// Same candidate rule as the good list: a heist both players have
+		// cleared is finished, not a bad choice.
+		it('never returns a heist both players have cleared', () => {
+			const done = [
+				player(R, { unlocked: { worst: 1 } }),
+				player(K, { unlocked: { worst: 1 } }),
+			];
+			expect(ids(leastRecommended(rows, done, [], { limit: 3 }))).not.toContain(
+				'worst',
+			);
+		});
+
+		/**
+		 * The two lists must agree: the worst list is the best list read from
+		 * the other end, not a separately computed thing that could drift.
+		 */
+		it('is the exact reverse of the full ranking', () => {
+			const best = recommend(rows, PLAYERS, [], { limit: 99 });
+			const worst = leastRecommended(rows, PLAYERS, [], { limit: 99 });
+			expect(ids(worst)).toEqual([...ids(best)].reverse());
+		});
+
+		// Alphabetical is the tiebreak, not part of the ranking, so it must not
+		// flip when the score order does.
+		it('breaks ties on heist name in the same direction', () => {
+			const tied = [
+				heist({ id: 'z', heist: 'Zebra' }),
+				heist({ id: 'a', heist: 'Aardvark' }),
+			];
+			expect(ids(leastRecommended(tied, PLAYERS, [], { limit: 2 }))).toEqual([
+				'a',
+				'z',
+			]);
+		});
+
+		it('returns nothing when everything is done', () => {
+			const done = [
+				player(R, { unlocked: { best: 1, mid: 1, worst: 1 } }),
+				player(K, { unlocked: { best: 1, mid: 1, worst: 1 } }),
+			];
+			expect(leastRecommended(rows, done, [])).toEqual([]);
+		});
+	});
+
+	describe('weakestFactors', () => {
+		/**
+		 * Ranked by what each term GAVE UP, not by how small its contribution
+		 * is. Proximity at 0 gives up its full 0.75; brevity at full marks
+		 * gives up nothing. Ranking by raw contribution would call brevity the
+		 * problem on a one-day heist, because 0.5 is a small number.
+		 */
+		it('names the term that gave up the most, not the smallest number', () => {
+			const rows = [
+				heist({ id: 'a', perceivedDifficulty: 'EASY', days: 1, globalPct: 9 }),
+			];
+			const [rec] = leastRecommended(rows, PLAYERS, []);
+			// ease, brevity and rarity are all at full marks; closeness (weight 1)
+			// and proximity (0.75) are both at zero, so closeness gave up more.
+			expect(weakestFactors(rec!, 2)).toEqual(['closeness', 'proximity']);
+		});
+
+		it('never names a term that is already at full marks', () => {
+			const rows = [
+				heist({ id: 'a', perceivedDifficulty: 'EASY', days: 1, globalPct: 9 }),
+			];
+			const [rec] = leastRecommended(rows, PLAYERS, []);
+			expect(weakestFactors(rec!, 5)).not.toContain('ease');
+			expect(weakestFactors(rec!, 5)).not.toContain('brevity');
 		});
 	});
 

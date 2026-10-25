@@ -17,6 +17,7 @@ import {
 	type PlayerProgress,
 } from './api.js';
 import type { Badge } from './badges.js';
+import { LADDER_PCT } from './generated/ladder.js';
 import { LADDER_RUNGS, type Heist, type HeistDays } from './types.js';
 
 /** The five things that decide the score. */
@@ -27,7 +28,15 @@ export interface Factors {
 	readonly closeness: number;
 	/** Our own difficulty call, inverted so easier scores higher. */
 	readonly ease: number;
-	/** How close this heist's contractor badge is to being earned. */
+	/**
+	 * How close this heist's contractor badge is, scored on the number of
+	 * heists LEFT rather than the fraction done.
+	 *
+	 * The fraction got this backwards on the real data: The Continental sat at
+	 * 1/2 and scored 0.50 while Bain sat at 11/20 and scored 0.55, so the
+	 * contractor nine heists away outranked the one a single heist away. What
+	 * the term is for is finishing a set, and that is `1 / remaining`.
+	 */
 	readonly proximity: number;
 	/** Shorter heists score higher. */
 	readonly brevity: number;
@@ -42,15 +51,21 @@ export interface Factors {
  * and that limitation is accepted rather than corrected, because every
  * available correction introduces a worse bias of its own.
  *
- * Brevity is the one term at less than full weight: length should nudge the
- * order, not decide it, so a strong three-day candidate can still beat a
- * mediocre one-day one.
+ * Brevity and proximity both sit below full weight, for the same reason:
+ * neither should be able to decide the order on its own.
+ *
+ * Proximity in particular is scored as 1 / remaining, so a contractor one
+ * heist from a badge scores the maximum. At full weight that single fact
+ * outweighed every judgement we make about the heist itself - a badge is a
+ * nice-to-have, not a reason to play something we rate hard and have never
+ * loaded. At 0.75 it still lifts a nearly-finished set above an equal
+ * alternative without carrying the decision.
  */
 export const WEIGHTS: Factors = {
 	rarity: 1,
 	closeness: 1,
 	ease: 1,
-	proximity: 1,
+	proximity: 0.75,
 	brevity: 0.5,
 };
 
@@ -78,15 +93,23 @@ export interface Recommendation {
 	 */
 	readonly partial: boolean;
 	/**
-	 * The rung both players have reached, 1-7 into LADDER_RUNGS, or 0 for
-	 * none. `undefined` means unknown, which is not the same as 0 - so the UI
-	 * can name the difficulty we got to rather than describing a score.
+	 * The rung EVERY player has reached, 1-7 into LADDER_RUNGS, or 0 for none.
+	 * `undefined` means unknown, which is not the same as 0 - so the UI can
+	 * name the difficulty we got to rather than describing a score.
 	 */
 	readonly rung: number | undefined;
 	/**
+	 * Every readable player's own rung, furthest first.
+	 *
+	 * The per-player breakdown rather than just a shared floor, so the reason
+	 * can name who has taken a heist how far instead of flattening two
+	 * different standings into the lower one. Empty when nobody is readable.
+	 */
+	readonly perPlayer: readonly PlayerStanding[];
+	/**
 	 * Heists left before this contractor's badge is earned, or null when there
 	 * is no badge to earn. Lets the reason say "2 left to finish Vlad" instead
-	 * of quoting a fraction.
+	 * of quoting a fraction, and is what the proximity term is scored on.
 	 */
 	readonly contractorLeft: number | null;
 }
@@ -104,6 +127,40 @@ export interface Recommendation {
 export type RarityScale = 'minmax' | 'rank';
 
 /**
+ * Discounts a One Down percentage by how many people played the heist at all.
+ *
+ * A heist's One Down percentage is measured against EVERY owner of the game,
+ * so it mostly reflects how many people ever touched that heist rather than
+ * how hard it is: across the catalog the One Down figure tracks the Normal
+ * figure at r = 0.93 on a log scale. A launch heist had twelve years and the
+ * game's whole casual population to accumulate completions; a late DLC heist
+ * had neither.
+ *
+ * So a completion is worth less the more of that casual population was around
+ * for it. Jewelry Store, which 33.8% of owners have beaten on Normal, keeps
+ * 8.8% x (1 - 0.338) = 5.8%. A heist only 1% of owners ever played keeps
+ * essentially all of its figure.
+ *
+ * This deliberately only nudges. The multiplier spans x0.66 to x0.999 across
+ * the real catalog, so a heist with a genuinely high completion rate stays
+ * near the top - the correction reorders the middle, it does not invert the
+ * scale.
+ *
+ * Returns the figure unchanged when the heist has no ladder data, which is
+ * what happens for a heist absent from `generated/ladder.ts`. No information
+ * means no discount, never a silent zero.
+ */
+function discounted(heist: Heist): number {
+	const rungs = LADDER_PCT[heist.id as keyof typeof LADDER_PCT] as
+		readonly number[] | undefined;
+	const playedOnNormal = rungs?.[0];
+	if (playedOnNormal === undefined || !Number.isFinite(playedOnNormal)) {
+		return heist.globalPct;
+	}
+	return heist.globalPct * (1 - playedOnNormal / 100);
+}
+
+/**
  * Maps each heist id to a 0-1 rarity, higher meaning more people complete it.
  *
  * Built across the WHOLE catalog, not just the candidates, so the scale does
@@ -113,43 +170,95 @@ function rarityScale(
 	catalog: readonly Heist[],
 	scale: RarityScale,
 ): ReadonlyMap<string, number> {
+	const value = new Map(catalog.map((h) => [h.id, discounted(h)] as const));
+
 	if (scale === 'rank') {
-		const ordered = [...catalog].sort((a, b) => a.globalPct - b.globalPct);
+		const ordered = [...catalog].sort(
+			(a, b) => value.get(a.id)! - value.get(b.id)!,
+		);
 		const last = ordered.length - 1;
 		return new Map(
 			ordered.map((h, i) => [h.id, last === 0 ? 0.5 : i / last] as const),
 		);
 	}
 
-	const pcts = catalog.map((h) => h.globalPct);
+	const pcts = [...value.values()];
 	const lo = Math.min(...pcts);
 	const hi = Math.max(...pcts);
 	// Every heist identical: no information, so no opinion.
 	const span = hi - lo;
 	return new Map(
-		catalog.map((h) => [h.id, span === 0 ? 0.5 : (h.globalPct - lo) / span]),
+		catalog.map((h) => [
+			h.id,
+			span === 0 ? 0.5 : (value.get(h.id)! - lo) / span,
+		]),
 	);
 }
 
+/** One player's position on one heist's ladder. */
+export interface PlayerStanding {
+	readonly name: string;
+	/** 1-7 into LADDER_RUNGS, or 0 for never completed on any difficulty. */
+	readonly rung: number;
+}
+
+/** Where the whole crew stands on one heist's ladder. */
+interface Standing {
+	/** The rung EVERY player has reached. Keeps a "you have both" claim true. */
+	readonly lowest: number | undefined;
+	/** Each readable player, furthest first. */
+	readonly perPlayer: readonly PlayerStanding[];
+	/** Readiness, 0-1. */
+	readonly closeness: number;
+}
+
 /**
- * The highest rung BOTH players have reached, or undefined if nobody's data
- * could be read.
+ * How ready the pair is for one heist.
  *
- * The MINIMUM across players, not the average: a heist one of us has cleared
- * on Death Wish and the other has never loaded is not a heist we are nearly
- * done with. A player whose read failed is left out of the minimum entirely
- * rather than counted as rung 0 - unknown is not zero, and treating it as zero
- * would drag every heist's closeness down whenever a profile goes private.
+ * The LOWEST rung counts double and every other player once, so the least
+ * experienced half still dominates - a heist one of us has never loaded is
+ * not a heist we are nearly done with - WITHOUT discarding what the other one
+ * knows.
+ *
+ * The earlier rule was a plain minimum, which discarded it entirely. On the
+ * real catalog that was not a corner case: the two of us sit at different
+ * rungs on 21 of the 59 heists left, including Aftershock, which yogizmo has
+ * cleared on Death Sentence and the old rule scored as though nobody had ever
+ * played it.
+ *
+ * A player whose read failed is left out entirely rather than counted as rung
+ * 0 - unknown is not zero, and treating it as zero would drag every heist's
+ * closeness down whenever a profile goes private.
  */
-function sharedRung(
+function standingOn(
 	players: readonly PlayerProgress[],
 	heistId: string,
-): number | undefined {
-	const rungs = players
-		.map((p) => ladderRung(p, heistId))
-		.filter((r): r is number => r !== undefined);
+): Standing {
+	const known = players
+		.map((p) => ({ name: p.name, rung: ladderRung(p, heistId) }))
+		.filter((x): x is { name: string; rung: number } => x.rung !== undefined);
 
-	return rungs.length === 0 ? undefined : Math.min(...rungs);
+	if (known.length === 0) {
+		return { lowest: undefined, perPlayer: [], closeness: 0 };
+	}
+
+	const rungs = known.map((x) => x.rung);
+	const lowest = Math.min(...rungs);
+
+	// Counting `lowest` a second time is what gives it double weight, and
+	// dividing by length + 1 keeps the result inside 0..LADDER_RUNGS.length.
+	const weighted =
+		(rungs.reduce((a, b) => a + b, 0) + lowest) / (rungs.length + 1);
+
+	return {
+		lowest,
+		// Furthest first, so the reason leads with whoever knows it best.
+		// Name breaks ties, keeping the sentence stable between renders.
+		perPlayer: [...known].sort(
+			(a, b) => b.rung - a.rung || a.name.localeCompare(b.name, 'en'),
+		),
+		closeness: weighted / LADDER_RUNGS.length,
+	};
 }
 
 /**
@@ -175,33 +284,28 @@ export interface RecommendOptions {
 	readonly scale?: RarityScale;
 }
 
-/**
- * The heists worth playing next, best first.
- *
- * Heists both players have already cleared are not candidates: there is
- * nothing left to recommend about them.
- */
-export function recommend(
+/** Every heist still worth scoring, unsorted. */
+function scoreAll(
 	catalog: readonly Heist[],
 	players: readonly PlayerProgress[],
 	badges: readonly Badge[],
-	{ limit = 3, scale = 'minmax' }: RecommendOptions = {},
+	scale: RarityScale,
 ): readonly Recommendation[] {
 	const ok = okPlayers(players);
 	const partial = players.length !== ok.length;
 	const rarity = rarityScale(catalog, scale);
 
-	const scored = catalog
+	return catalog
 		.filter((h) => !(ok.length > 0 && ok.every((p) => hasCleared(p, h.id))))
 		.map((heist): Recommendation => {
-			const rung = sharedRung(players, heist.id);
+			const standing = standingOn(players, heist.id);
 			const badge = contractorBadge(badges, heist);
 
 			const factors: Factors = {
 				rarity: rarity.get(heist.id) ?? 0,
-				closeness: (rung ?? 0) / LADDER_RUNGS.length,
+				closeness: standing.closeness,
 				ease: EASE[heist.perceivedDifficulty],
-				proximity: badge ? badge.done / badge.of : 0,
+				proximity: badge ? 1 / (badge.of - badge.done) : 0,
 				brevity: BREVITY[heist.days],
 			};
 
@@ -220,27 +324,95 @@ export function recommend(
 				factors,
 				contributions,
 				partial,
-				rung,
+				rung: standing.lowest,
+				perPlayer: standing.perPlayer,
 				contractorLeft: badge ? badge.of - badge.done : null,
 			};
 		});
-
-	// Heist name breaks ties, matching the table's sort, so equal scores come
-	// out in a stable readable order rather than catalog order.
-	scored.sort(
-		(a, b) =>
-			b.score - a.score || a.heist.heist.localeCompare(b.heist.heist, 'en'),
-	);
-	return scored.slice(0, limit);
 }
+
+/**
+ * Heist name breaks ties in BOTH directions, so the best and worst lists are
+ * each stable and readable rather than falling back to catalog order. Note it
+ * is deliberately not reversed for the worst list: alphabetical is the
+ * tiebreak, not part of the ranking.
+ */
+const byName = (a: Recommendation, b: Recommendation) =>
+	a.heist.heist.localeCompare(b.heist.heist, 'en');
+
+/**
+ * The heists worth playing next, best first.
+ *
+ * Heists both players have already cleared are not candidates: there is
+ * nothing left to recommend about them.
+ */
+export function recommend(
+	catalog: readonly Heist[],
+	players: readonly PlayerProgress[],
+	badges: readonly Badge[],
+	{ limit = 3, scale = 'minmax' }: RecommendOptions = {},
+): readonly Recommendation[] {
+	return [...scoreAll(catalog, players, badges, scale)]
+		.sort((a, b) => b.score - a.score || byName(a, b))
+		.slice(0, limit);
+}
+
+/**
+ * The heists scoring worst, worst first.
+ *
+ * The same scores read from the other end: long, hard, rarely finished, and
+ * on a contractor we are nowhere near. Shown so the grind is visible and can
+ * be chosen deliberately, rather than being whatever is left over at the end.
+ *
+ * Sorted ascending rather than reversing `recommend`, so the name tiebreak
+ * stays alphabetical instead of flipping to reverse-alphabetical.
+ */
+export function leastRecommended(
+	catalog: readonly Heist[],
+	players: readonly PlayerProgress[],
+	badges: readonly Badge[],
+	{ limit = 3, scale = 'minmax' }: RecommendOptions = {},
+): readonly Recommendation[] {
+	return [...scoreAll(catalog, players, badges, scale)]
+		.sort((a, b) => a.score - b.score || byName(a, b))
+		.slice(0, limit);
+}
+
+const TERMS = (): (keyof Factors)[] => [
+	'rarity',
+	'closeness',
+	'ease',
+	'proximity',
+	'brevity',
+];
 
 /** The terms that actually drove a score, largest contribution first. */
 export function topFactors(
 	rec: Recommendation,
 	count = 2,
 ): readonly (keyof Factors)[] {
-	return (Object.keys(rec.contributions) as (keyof Factors)[])
+	return TERMS()
 		.filter((k) => rec.contributions[k] > 0)
 		.sort((a, b) => rec.contributions[b] - rec.contributions[a])
+		.slice(0, count);
+}
+
+/**
+ * The terms holding a score DOWN the most, worst first.
+ *
+ * Ranked by what each term gave up - its weight minus what it scored - not by
+ * how small its contribution was. Those are different: proximity contributing
+ * 0.07 out of a possible 0.75 is a bigger drag than brevity contributing 0.25
+ * out of 0.5, even though 0.07 is the smaller number. Without the weight, the
+ * cheapest terms would always look like the problem.
+ */
+export function weakestFactors(
+	rec: Recommendation,
+	count = 2,
+): readonly (keyof Factors)[] {
+	const shortfall = (k: keyof Factors) => WEIGHTS[k] - rec.contributions[k];
+	return TERMS()
+		.filter((k) => shortfall(k) > 0)
+		.sort((a, b) => shortfall(b) - shortfall(a))
 		.slice(0, count);
 }

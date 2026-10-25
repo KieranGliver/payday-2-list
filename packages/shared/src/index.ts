@@ -1,10 +1,13 @@
 export { CATALOG, BY_ID } from './catalog.js';
 export { badgeTally, resolveBadges, type Badge } from './badges.js';
 export {
+	leastRecommended,
 	recommend,
 	topFactors,
+	weakestFactors,
 	WEIGHTS,
 	type Factors,
+	type PlayerStanding,
 	type RarityScale,
 	type Recommendation,
 } from './recommend.js';

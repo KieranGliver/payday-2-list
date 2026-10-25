@@ -20,14 +20,20 @@ import {
 	iconHash,
 	isMeta,
 	isOneDown,
+	LADDER_RUNGS,
 	parseHeistName,
 	quote,
+	rungIdsFor,
 	toPercent,
 } from './lib/parse.mjs';
 
 const APPID = 218620;
 const OUT = new URL(
 	'../packages/shared/src/generated/steam.ts',
+	import.meta.url,
+);
+const LADDER_OUT = new URL(
+	'../packages/shared/src/generated/ladder.ts',
 	import.meta.url,
 );
 const RATINGS = new URL(
@@ -202,8 +208,9 @@ if (heists.length < MIN_HEISTS) {
 	);
 }
 
-const ids = new Set(heists.map((h) => h.id));
-if (ids.size !== heists.length) throw new Error('duplicate achievement ids');
+const catalogIds = new Set(heists.map((h) => h.id));
+if (catalogIds.size !== heists.length)
+	throw new Error('duplicate achievement ids');
 
 const names = new Set(heists.map((h) => h.heist));
 if (names.size !== heists.length) {
@@ -216,6 +223,58 @@ for (const h of heists) {
 	if (!/^[0-9a-f]{40}$/.test(h.icon) || !/^[0-9a-f]{40}$/.test(h.iconGray)) {
 		throw new Error(`${h.id}: icon hash is not 40 hex characters`);
 	}
+}
+
+// --- The difficulty ladder -------------------------------------------------
+//
+// Every heist carries one achievement per rung below One Down. We already
+// receive all of them on every GetPlayerAchievements call and currently throw
+// them away; emitting the ids here is what lets the API report how close each
+// player already is. The percentages are the POPULATION side of the same
+// comparison - how far everyone else got - and come from the same keyless
+// endpoint as globalPct, so neither costs a key use at runtime.
+//
+// Ids and percentages are separate exports, not one table of objects: the SPA
+// needs only the percentages, so keeping the ~600 ids in their own const lets
+// the bundler drop them from the browser build.
+const ladderIds = [];
+const ladderPct = [];
+const seenRungIds = new Set();
+for (const h of heists) {
+	// Throws if any rung is missing or ambiguous, before anything is written.
+	const ids = rungIdsFor(h.heist, schema);
+
+	for (const id of ids) {
+		if (seenRungIds.has(id)) {
+			throw new Error(
+				`${h.heist}: rung ${id} is already used by another heist`,
+			);
+		}
+		seenRungIds.add(id);
+		if (catalogIds.has(id)) {
+			throw new Error(
+				`${h.heist}: rung ${id} is also a One Down achievement in the catalog`,
+			);
+		}
+	}
+
+	const pcts = ids.map((id) => {
+		const value = toPercent(pct[id]);
+		if (value === null) {
+			throw new Error(`global percentage for rung ${id} is not a percentage`);
+		}
+		return value;
+	});
+
+	ladderIds.push(`\t${h.id}: [${ids.map(quote).join(', ')}],`);
+	ladderPct.push(`\t${h.id}: [${pcts.join(', ')}],`);
+}
+
+if (seenRungIds.size !== heists.length * LADDER_RUNGS.length) {
+	throw new Error(
+		`expected ${heists.length * LADDER_RUNGS.length} rung achievements, ` +
+			`got ${seenRungIds.size}`,
+	);
 }
 
 const zeroed = heists.filter((h) => h.globalPct === 0);
@@ -295,10 +354,53 @@ export type MetaId = (typeof META_ACHIEVEMENTS)[number]['id'];
 `,
 );
 
+await writeFile(
+	LADDER_OUT,
+	`// GENERATED FILE - DO NOT EDIT.
+// Regenerate with: npm run sync:steam
+// Source: Steam achievement schema + global unlock percentages for appid ${APPID}.
+//
+// The ${LADDER_RUNGS.length} difficulty rungs below One Down for each heist, ascending:
+// ${LADDER_RUNGS.join(', ')}.
+//
+// Recommender input only - nothing here is shown in the UI.
+
+import type { HeistId } from './steam.js';
+
+/**
+ * Rung achievement ids, ascending. Used server-side to work out how far each
+ * player has already got on a heist.
+ *
+ * Imported only by the API: keeping it separate from the percentages below is
+ * what keeps ${seenRungIds.size} achievement ids out of the browser bundle.
+ */
+export const LADDER_IDS: Record<HeistId, readonly string[]> = {
+${ladderIds.join('\n')}
+};
+
+/**
+ * Global unlock percentage per rung, ascending - the population's progress up
+ * the same ladder, to compare a player's position against.
+ *
+ * These are NOT monotonic. The plain Death Sentence achievements shipped in a
+ * later update and were never backfilled, so for most heists that rung reads
+ * LOWER than the One Down achievement above it. A rung's percentage reflects
+ * when its achievement shipped as much as how hard the rung is.
+ */
+export const LADDER_PCT: Record<HeistId, readonly number[]> = {
+${ladderPct.join('\n')}
+};
+`,
+);
+
 console.log(
 	`\nwrote ${heists.length} heists -> ${OUT.pathname.split('/').slice(-4).join('/')}`,
 );
 console.log(`wrote ${metas.length} meta achievements (whole-contractor sets)`);
+console.log(
+	`wrote ${seenRungIds.size} ladder rungs (${LADDER_RUNGS.length} per heist) -> ` +
+		LADDER_OUT.pathname.split('/').slice(-4).join('/'),
+);
 if (zeroed.length)
 	console.log(
 		`at 0.00% global unlock: ${zeroed.map((h) => h.heist).join(', ')}`,
@@ -306,8 +408,8 @@ if (zeroed.length)
 
 const prev = await existingRatingIds();
 if (prev) {
-	const added = [...ids].filter((i) => !prev.has(i));
-	const removed = [...prev].filter((i) => !ids.has(i));
+	const added = [...catalogIds].filter((i) => !prev.has(i));
+	const removed = [...prev].filter((i) => !catalogIds.has(i));
 	if (added.length)
 		console.log(
 			`\nNEW heists needing a rating in curated/ratings.ts: ${added.join(', ')}`,

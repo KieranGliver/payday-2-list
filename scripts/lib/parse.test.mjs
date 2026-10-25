@@ -4,8 +4,10 @@ import {
 	iconHash,
 	isMeta,
 	isOneDown,
+	normaliseDescription,
 	parseHeistName,
 	quote,
+	rungIdsFor,
 	toPercent,
 } from './parse.mjs';
 
@@ -182,5 +184,133 @@ describe('iconHash', () => {
 		expect(iconHash('')).toBeNull();
 		expect(iconHash(undefined)).toBeNull();
 		expect(iconHash('https://example.com/not-a-hash.jpg')).toBeNull();
+	});
+});
+
+describe('rungIdsFor', () => {
+	/** The seven rungs for one heist, in the wording Steam actually uses. */
+	const ladder = (name) => [
+		{
+			id: 'n',
+			description: `Complete the ${name} job on the Normal difficulty or above.`,
+		},
+		{
+			id: 'h',
+			description: `Complete the ${name} job on the Hard difficulty or above.`,
+		},
+		{
+			id: 'v',
+			description: `Complete the ${name} job on the Very Hard difficulty or above.`,
+		},
+		{
+			id: 'o',
+			description: `Complete the ${name} job on the OVERKILL difficulty or above.`,
+		},
+		{
+			id: 'm',
+			description: `Complete the ${name} job on the Mayhem difficulty or above.`,
+		},
+		{
+			id: 'w',
+			description: `Complete the ${name} job on the Death Wish difficulty or above.`,
+		},
+		{
+			id: 's',
+			description: `Complete the ${name} job on the Death Sentence difficulty.`,
+		},
+	];
+
+	it('returns the seven rungs in ascending order', () => {
+		expect(rungIdsFor('Aftershock', ladder('Aftershock'))).toEqual([
+			'n',
+			'h',
+			'v',
+			'o',
+			'm',
+			'w',
+			's',
+		]);
+	});
+
+	// Steam appends reward prose to some rungs. An end-anchored match dropped
+	// them, silently emitting a six-rung ladder for Alaskan Deal and seven
+	// other heists.
+	it('accepts a rung with a trailing unlock note', () => {
+		const rungs = ladder('Alaskan Deal');
+		rungs[0].description =
+			'Complete the Alaskan Deal job on the Normal difficulty or above. ' +
+			'Unlocks the "Winter Camo Parka" outfit.';
+		expect(rungIdsFor('Alaskan Deal', rungs)[0]).toBe('n');
+	});
+
+	// "Ukrainian Job" ends in "Job". Parsing a name out of the description and
+	// stripping a trailing " job" turned it into "Ukrainian", which matched
+	// nothing at all - the same family as "The Diamond" vs "Diamond Heist".
+	it('handles a heist whose name ends in "Job"', () => {
+		expect(rungIdsFor('Ukrainian Job', ladder('Ukrainian Job'))).toHaveLength(
+			7,
+		);
+	});
+
+	// Steam writes "Complete the Alesso Heist" on the Normal rung and
+	// "Complete The Alesso Heist" on the other six.
+	it('accepts either case of the leading article', () => {
+		const rungs = ladder('Alesso Heist').map((r) => ({
+			...r,
+			description: r.description.replace('Complete the', 'Complete The'),
+		}));
+		rungs[0].description = rungs[0].description.replace(
+			'Complete The',
+			'Complete the',
+		);
+		expect(rungIdsFor('The Alesso Heist', rungs)).toHaveLength(7);
+	});
+
+	// A conditional achievement names the same heist and the same difficulty,
+	// then adds a clause. Under a lazy capture it read as a second OVERKILL
+	// rung for Framing Frame and made the ladder ambiguous.
+	it('ignores a conditional achievement on the same difficulty', () => {
+		const rungs = [
+			...ladder('Framing Frame'),
+			{
+				id: 'conditional',
+				description:
+					'Complete the Framing Frame job on the OVERKILL difficulty or ' +
+					'above with each crew member using no skills, wearing suits, ' +
+					'wielding Sniper Rifles and Judge shotguns.',
+			},
+		];
+		expect(rungIdsFor('Framing Frame', rungs)[3]).toBe('o');
+	});
+
+	// A partial ladder would understate every player's position on that heist
+	// forever, so it must fail the run rather than emit six rungs.
+	it('throws rather than returning a partial ladder', () => {
+		const rungs = ladder('Aftershock').filter((r) => r.id !== 'm');
+		expect(() => rungIdsFor('Aftershock', rungs)).toThrow(/Mayhem/);
+	});
+
+	it('throws when two achievements claim the same rung', () => {
+		const rungs = [
+			...ladder('Aftershock'),
+			{
+				id: 'dupe',
+				description:
+					'Complete the Aftershock job on the Mayhem difficulty or above.',
+			},
+		];
+		expect(() => rungIdsFor('Aftershock', rungs)).toThrow(/found 2/);
+	});
+});
+
+describe('normaliseDescription', () => {
+	it('strips escaping artefacts and collapses whitespace', () => {
+		expect(normaliseDescription('Complete  the \\"Foo\\" job.\n')).toBe(
+			'Complete the "Foo" job.',
+		);
+	});
+
+	it('treats a missing description as empty', () => {
+		expect(normaliseDescription(undefined)).toBe('');
 	});
 });

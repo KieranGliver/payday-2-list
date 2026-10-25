@@ -15,9 +15,10 @@ branch and open a PR.
 
 ## Never hand-edit
 
-- `packages/shared/src/generated/steam.ts` — run `npm run sync:steam`. It is in
-  `.prettierignore` and ESLint's ignores on purpose: formatting it would make
-  the next regeneration produce a spurious diff.
+- `packages/shared/src/generated/` — run `npm run sync:steam`. Both `steam.ts`
+  and `ladder.ts` are written by it. The directory is in `.prettierignore` and
+  ESLint's ignores on purpose: formatting these would make the next
+  regeneration produce a spurious diff.
 
   CI used to assert the committed file still matched the generator's output.
   That check had to go: Steam's global percentages differ by 0.1 between the
@@ -80,6 +81,18 @@ now covered by tests in `scripts/lib/parse.test.mjs` and
 - **Five heist names contain an apostrophe.** A blunt
   `JSON.stringify().replace('"', "'")` turns `Breakin' Feds` into an
   unterminated literal and breaks the whole generated catalog.
+- **A difficulty rung must be matched from a KNOWN heist name**, never from a
+  name parsed back out of the description. Four separate things break the
+  parsing approach: trailing `Unlocks the "..." outfit.` prose, `Ukrainian Job`
+  ending in "Job", `The Alesso Heist` switching the case of its article between
+  rungs, and conditional achievements (`...on the OVERKILL difficulty or above
+with each crew member using no skills`) reading as a second rung. All four
+  are covered in `parse.test.mjs`.
+- **The ladder percentages are not monotonic.** The plain Death Sentence
+  achievements shipped in a later update and were never backfilled, so for most
+  heists that rung reads _lower_ than the One Down achievement above it, and a
+  player can hold One Down without Death Sentence. Anything deriving a player's
+  rung must take the **highest** unlocked rung, never the first gap.
 
 ## Conventions
 

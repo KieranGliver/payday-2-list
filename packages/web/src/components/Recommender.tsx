@@ -1,4 +1,10 @@
-import { topFactors, type Factors, type Recommendation } from '@pd2/shared';
+import {
+	iconUrl,
+	LADDER_RUNGS,
+	topFactors,
+	type Factors,
+	type Recommendation,
+} from '@pd2/shared';
 import { TriangleAlert } from 'lucide-react';
 
 interface Props {
@@ -7,14 +13,40 @@ interface Props {
 	readonly loading: boolean;
 }
 
-/** How each term reads in a sentence, as the reason it pushed a heist up. */
-const WHY: Record<keyof Factors, string> = {
-	closeness: 'already deep on the difficulty ladder',
-	rarity: 'commonly completed',
-	ease: 'we rate it easy',
-	proximity: 'nearly finishes its contractor',
-	brevity: 'short',
-};
+/**
+ * Why a heist is here, in words someone can act on.
+ *
+ * These name the actual thing - the difficulty we got to, how many heists are
+ * left for the contractor - rather than describing the score. An earlier
+ * version said things like "already deep on the difficulty ladder", which
+ * describes our arithmetic instead of answering "why this one".
+ *
+ * Returns null when a term has nothing concrete to say, so a vague clause is
+ * dropped rather than padded out.
+ */
+function reasonFor(rec: Recommendation, term: keyof Factors): string | null {
+	const h = rec.heist;
+	switch (term) {
+		case 'closeness': {
+			// rung is 1-7 into LADDER_RUNGS; 0 and undefined have nothing to say.
+			const name = rec.rung ? LADDER_RUNGS[rec.rung - 1] : undefined;
+			return name ? `you have both already beaten it on ${name}` : null;
+		}
+		case 'rarity':
+			return `plenty of other players have finished it (${h.globalPct.toFixed(1)}%)`;
+		case 'ease':
+			return `you rated it ${h.perceivedDifficulty.toLowerCase()}`;
+		case 'proximity': {
+			const n = rec.contractorLeft;
+			if (n === null) return null;
+			return `only ${n} heist${n === 1 ? '' : 's'} left to finish ${h.contractor}`;
+		}
+		case 'brevity':
+			return h.days === 1
+				? 'it only takes one day'
+				: `it is a ${h.days}-day job`;
+	}
+}
 
 const approachColor: Record<string, string> = {
 	LOUD: 'var(--approach-loud)',
@@ -75,7 +107,8 @@ export function Recommender({ recommendations, loading }: Props) {
 					{recommendations.map((rec, i) => {
 						const h = rec.heist;
 						const why = topFactors(rec)
-							.map((k) => WHY[k])
+							.map((k) => reasonFor(rec, k))
+							.filter((r): r is string => r !== null)
 							.join(', and ');
 
 						return (
@@ -83,20 +116,32 @@ export function Recommender({ recommendations, loading }: Props) {
 								key={h.id}
 								className="rounded-lg border bg-card/80 p-4"
 							>
-								<div className="flex items-baseline gap-2">
-									<span
-										className="text-lg font-semibold text-primary tabular-nums"
-										aria-hidden
-									>
-										{i + 1}
-									</span>
-									<span className="min-w-0 font-medium">{h.heist}</span>
+								<div className="flex items-center gap-2.5">
+									{/* Always the grey icon: by definition nothing here is
+									    cleared by both of us yet. */}
+									<img
+										src={iconUrl(h.iconGray)}
+										alt=""
+										width={40}
+										height={40}
+										loading="lazy"
+										className="size-10 shrink-0 rounded"
+									/>
+									<div className="min-w-0">
+										<div className="flex items-baseline gap-2">
+											<span
+												className="text-lg font-semibold text-primary tabular-nums"
+												aria-hidden
+											>
+												{i + 1}
+											</span>
+											<span className="min-w-0 font-medium">{h.heist}</span>
+										</div>
+										<p className="text-xs text-muted-foreground">
+											{h.contractor} · {h.days} day{h.days === 1 ? '' : 's'}
+										</p>
+									</div>
 								</div>
-
-								<p className="mt-1 text-xs text-muted-foreground">
-									{h.contractor} · {h.days} day{h.days === 1 ? '' : 's'} ·{' '}
-									{h.globalPct.toFixed(1)}% global
-								</p>
 
 								<div className="mt-2 flex flex-wrap gap-1.5">
 									<Tag
@@ -111,7 +156,7 @@ export function Recommender({ recommendations, loading }: Props) {
 
 								{/* The whole point of the panel: why this one, in words. */}
 								<p className="mt-3 text-xs text-muted-foreground">
-									Because it is {why}.
+									Because {why}.
 								</p>
 							</li>
 						);

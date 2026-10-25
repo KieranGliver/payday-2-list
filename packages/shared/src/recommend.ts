@@ -231,23 +231,18 @@ export interface RecommendOptions {
 	readonly scale?: RarityScale;
 }
 
-/**
- * The heists worth playing next, best first.
- *
- * Heists both players have already cleared are not candidates: there is
- * nothing left to recommend about them.
- */
-export function recommend(
+/** Every heist still worth scoring, unsorted. */
+function scoreAll(
 	catalog: readonly Heist[],
 	players: readonly PlayerProgress[],
 	badges: readonly Badge[],
-	{ limit = 3, scale = 'minmax' }: RecommendOptions = {},
+	scale: RarityScale,
 ): readonly Recommendation[] {
 	const ok = okPlayers(players);
 	const partial = players.length !== ok.length;
 	const rarity = rarityScale(catalog, scale);
 
-	const scored = catalog
+	return catalog
 		.filter((h) => !(ok.length > 0 && ok.every((p) => hasCleared(p, h.id))))
 		.map((heist): Recommendation => {
 			const rung = sharedRung(players, heist.id);
@@ -280,23 +275,90 @@ export function recommend(
 				contractorLeft: badge ? badge.of - badge.done : null,
 			};
 		});
-
-	// Heist name breaks ties, matching the table's sort, so equal scores come
-	// out in a stable readable order rather than catalog order.
-	scored.sort(
-		(a, b) =>
-			b.score - a.score || a.heist.heist.localeCompare(b.heist.heist, 'en'),
-	);
-	return scored.slice(0, limit);
 }
+
+/**
+ * Heist name breaks ties in BOTH directions, so the best and worst lists are
+ * each stable and readable rather than falling back to catalog order. Note it
+ * is deliberately not reversed for the worst list: alphabetical is the
+ * tiebreak, not part of the ranking.
+ */
+const byName = (a: Recommendation, b: Recommendation) =>
+	a.heist.heist.localeCompare(b.heist.heist, 'en');
+
+/**
+ * The heists worth playing next, best first.
+ *
+ * Heists both players have already cleared are not candidates: there is
+ * nothing left to recommend about them.
+ */
+export function recommend(
+	catalog: readonly Heist[],
+	players: readonly PlayerProgress[],
+	badges: readonly Badge[],
+	{ limit = 3, scale = 'minmax' }: RecommendOptions = {},
+): readonly Recommendation[] {
+	return [...scoreAll(catalog, players, badges, scale)]
+		.sort((a, b) => b.score - a.score || byName(a, b))
+		.slice(0, limit);
+}
+
+/**
+ * The heists scoring worst, worst first.
+ *
+ * The same scores read from the other end: long, hard, rarely finished, and
+ * on a contractor we are nowhere near. Shown so the grind is visible and can
+ * be chosen deliberately, rather than being whatever is left over at the end.
+ *
+ * Sorted ascending rather than reversing `recommend`, so the name tiebreak
+ * stays alphabetical instead of flipping to reverse-alphabetical.
+ */
+export function leastRecommended(
+	catalog: readonly Heist[],
+	players: readonly PlayerProgress[],
+	badges: readonly Badge[],
+	{ limit = 3, scale = 'minmax' }: RecommendOptions = {},
+): readonly Recommendation[] {
+	return [...scoreAll(catalog, players, badges, scale)]
+		.sort((a, b) => a.score - b.score || byName(a, b))
+		.slice(0, limit);
+}
+
+const TERMS = (): (keyof Factors)[] => [
+	'rarity',
+	'closeness',
+	'ease',
+	'proximity',
+	'brevity',
+];
 
 /** The terms that actually drove a score, largest contribution first. */
 export function topFactors(
 	rec: Recommendation,
 	count = 2,
 ): readonly (keyof Factors)[] {
-	return (Object.keys(rec.contributions) as (keyof Factors)[])
+	return TERMS()
 		.filter((k) => rec.contributions[k] > 0)
 		.sort((a, b) => rec.contributions[b] - rec.contributions[a])
+		.slice(0, count);
+}
+
+/**
+ * The terms holding a score DOWN the most, worst first.
+ *
+ * Ranked by what each term gave up - its weight minus what it scored - not by
+ * how small its contribution was. Those are different: proximity contributing
+ * 0.07 out of a possible 0.75 is a bigger drag than brevity contributing 0.25
+ * out of 0.5, even though 0.07 is the smaller number. Without the weight, the
+ * cheapest terms would always look like the problem.
+ */
+export function weakestFactors(
+	rec: Recommendation,
+	count = 2,
+): readonly (keyof Factors)[] {
+	const shortfall = (k: keyof Factors) => WEIGHTS[k] - rec.contributions[k];
+	return TERMS()
+		.filter((k) => shortfall(k) > 0)
+		.sort((a, b) => shortfall(b) - shortfall(a))
 		.slice(0, count);
 }

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	leastRecommended,
 	recommend,
 	topFactors,
+	weakestFactors,
 	WEIGHTS,
 	type Recommendation,
 } from './recommend.js';
@@ -549,6 +551,107 @@ describe('recommend', () => {
 			const rows = [heist({ id: 'a', contractor: 'Bain' })];
 			const earned = [badge({ earned: true, done: 4, of: 4 })];
 			expect(recommend(rows, PLAYERS, earned)[0]?.contractorLeft).toBeNull();
+		});
+	});
+
+	describe('leastRecommended', () => {
+		const rows = [
+			heist({
+				id: 'best',
+				heist: 'Best',
+				perceivedDifficulty: 'EASY',
+				days: 1,
+			}),
+			heist({
+				id: 'mid',
+				heist: 'Mid',
+				perceivedDifficulty: 'MEDIUM',
+				days: 1,
+			}),
+			heist({
+				id: 'worst',
+				heist: 'Worst',
+				perceivedDifficulty: 'HARD',
+				days: 3,
+			}),
+		];
+
+		it('returns the lowest scorers, worst first', () => {
+			expect(ids(leastRecommended(rows, PLAYERS, [], { limit: 3 }))).toEqual([
+				'worst',
+				'mid',
+				'best',
+			]);
+		});
+
+		// Same candidate rule as the good list: a heist both players have
+		// cleared is finished, not a bad choice.
+		it('never returns a heist both players have cleared', () => {
+			const done = [
+				player(R, { unlocked: { worst: 1 } }),
+				player(K, { unlocked: { worst: 1 } }),
+			];
+			expect(ids(leastRecommended(rows, done, [], { limit: 3 }))).not.toContain(
+				'worst',
+			);
+		});
+
+		/**
+		 * The two lists must agree: the worst list is the best list read from
+		 * the other end, not a separately computed thing that could drift.
+		 */
+		it('is the exact reverse of the full ranking', () => {
+			const best = recommend(rows, PLAYERS, [], { limit: 99 });
+			const worst = leastRecommended(rows, PLAYERS, [], { limit: 99 });
+			expect(ids(worst)).toEqual([...ids(best)].reverse());
+		});
+
+		// Alphabetical is the tiebreak, not part of the ranking, so it must not
+		// flip when the score order does.
+		it('breaks ties on heist name in the same direction', () => {
+			const tied = [
+				heist({ id: 'z', heist: 'Zebra' }),
+				heist({ id: 'a', heist: 'Aardvark' }),
+			];
+			expect(ids(leastRecommended(tied, PLAYERS, [], { limit: 2 }))).toEqual([
+				'a',
+				'z',
+			]);
+		});
+
+		it('returns nothing when everything is done', () => {
+			const done = [
+				player(R, { unlocked: { best: 1, mid: 1, worst: 1 } }),
+				player(K, { unlocked: { best: 1, mid: 1, worst: 1 } }),
+			];
+			expect(leastRecommended(rows, done, [])).toEqual([]);
+		});
+	});
+
+	describe('weakestFactors', () => {
+		/**
+		 * Ranked by what each term GAVE UP, not by how small its contribution
+		 * is. Proximity at 0 gives up its full 0.75; brevity at full marks
+		 * gives up nothing. Ranking by raw contribution would call brevity the
+		 * problem on a one-day heist, because 0.5 is a small number.
+		 */
+		it('names the term that gave up the most, not the smallest number', () => {
+			const rows = [
+				heist({ id: 'a', perceivedDifficulty: 'EASY', days: 1, globalPct: 9 }),
+			];
+			const [rec] = leastRecommended(rows, PLAYERS, []);
+			// ease, brevity and rarity are all at full marks; closeness (weight 1)
+			// and proximity (0.75) are both at zero, so closeness gave up more.
+			expect(weakestFactors(rec!, 2)).toEqual(['closeness', 'proximity']);
+		});
+
+		it('never names a term that is already at full marks', () => {
+			const rows = [
+				heist({ id: 'a', perceivedDifficulty: 'EASY', days: 1, globalPct: 9 }),
+			];
+			const [rec] = leastRecommended(rows, PLAYERS, []);
+			expect(weakestFactors(rec!, 5)).not.toContain('ease');
+			expect(weakestFactors(rec!, 5)).not.toContain('brevity');
 		});
 	});
 

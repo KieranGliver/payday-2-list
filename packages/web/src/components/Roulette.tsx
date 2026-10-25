@@ -17,7 +17,7 @@ interface Props {
 
 /** Tile width including its gap. The strip maths depends on this exactly. */
 const TILE = 132;
-const SPIN_MS = 5000;
+const SPIN_MS = 4000;
 
 /**
  * Always the same distance, because WINNER_INDEX is fixed: ~11,200px, about

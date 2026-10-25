@@ -57,11 +57,14 @@ export function pickWeighted(
  * on the strip, not how far it moves.
  *
  * WINNER_INDEX is deliberately deep - the strip has to rip past a lot of
- * heists before it slows, or it reads as a nudge rather than a spin. The
- * tiles after it only exist so the lane is never empty on the right.
+ * heists before it slows, or it reads as a nudge rather than a spin. It is
+ * also what sets peak speed for a given duration, and peak speed is capped
+ * by the wagon-wheel effect: past roughly one tile per frame the strip reads
+ * as standing still or running backwards. The tiles after it only exist so
+ * the lane is never empty on the right.
  */
-export const REEL_LENGTH = 96;
-export const WINNER_INDEX = 84;
+export const REEL_LENGTH = 76;
+export const WINNER_INDEX = 64;
 
 /**
  * The strip of tiles to scroll past, with the winner at WINNER_INDEX.

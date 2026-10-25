@@ -48,9 +48,20 @@ export function pickWeighted(
 	return candidates[candidates.length - 1];
 }
 
-/** How many tiles the strip holds, and where the winning one sits. */
-export const REEL_LENGTH = 56;
-export const WINNER_INDEX = 48;
+/**
+ * How many tiles the strip holds, and where the winning one sits.
+ *
+ * Both are CONSTANT, which is the whole trick: every spin travels exactly the
+ * same distance for exactly the same duration, so the animation never has to
+ * be computed from the result. What changes between spins is which heists are
+ * on the strip, not how far it moves.
+ *
+ * WINNER_INDEX is deliberately deep - the strip has to rip past a lot of
+ * heists before it slows, or it reads as a nudge rather than a spin. The
+ * tiles after it only exist so the lane is never empty on the right.
+ */
+export const REEL_LENGTH = 96;
+export const WINNER_INDEX = 84;
 
 /**
  * The strip of tiles to scroll past, with the winner at WINNER_INDEX.

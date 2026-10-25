@@ -286,3 +286,20 @@ body {
 		animation: none;
 	}
 }
+
+/*
+ * The case-opening spin.
+ *
+ * A keyframe rather than a transition: every spin travels the same fixed
+ * distance, so the transform value is identical each time and a transition
+ * would have nothing to animate between. Remounting the strip restarts a
+ * keyframe for free.
+ */
+@keyframes heist-spin {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(var(--spin-travel));
+	}
+}

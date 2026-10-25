@@ -7,7 +7,7 @@ import {
 	type Recommendation,
 } from '@pd2/shared';
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -17,7 +17,37 @@ interface Props {
 
 /** Tile width including its gap. The strip maths depends on this exactly. */
 const TILE = 132;
-const SPIN_MS = 5200;
+const SPIN_MS = 5000;
+
+/**
+ * Always the same distance, because WINNER_INDEX is fixed: ~11,200px, about
+ * 84 tiles ripping past the marker.
+ *
+ * The strip is anchored at the container's centre, so tile i spans
+ * [i*TILE, (i+1)*TILE] and its middle sits at i*TILE + TILE/2. Pulling that
+ * back to zero puts it under the marker.
+ */
+const TRAVEL = WINNER_INDEX * TILE + TILE / 2;
+
+/**
+ * Measured in the browser rather than guessed at, as a share of the distance
+ * covered at each fifth of the duration, plus the peak speed in tiles per
+ * frame:
+ *
+ *                                 20%  40%  60%  80%   peak
+ *   cubic-bezier(.16,.62,.12,1)   ...crawled after 1s   0.84   <- first try
+ *   cubic-bezier(.15,.35,.3,1)    47%  76%  91%  98%    0.59
+ *   cubic-bezier(.3,.4,.35,1)     35%  70%  89%  98%    0.57   <- this
+ *
+ * Peak speed is the number that matters at the start. Tiles look alike, so
+ * once they pass roughly one per frame the strip reads as standing still or
+ * running backwards - the wagon-wheel effect - and the first curve was close
+ * enough to it to look like it was travelling the wrong way. This one opens
+ * gently, never exceeds about half a tile per frame, and still has a fifth of
+ * the distance left in the final 40% of the spin, which is where the tension
+ * is.
+ */
+const EASING = 'cubic-bezier(0.3, 0.4, 0.35, 1)';
 
 const difficultyColor: Record<string, string> = {
 	EASY: 'var(--difficulty-easy)',
@@ -28,8 +58,8 @@ const difficultyColor: Record<string, string> = {
 interface Spin {
 	readonly reel: readonly Heist[];
 	readonly winner: Heist;
-	/** Where inside the winning tile the marker lands, so it is never dead centre. */
-	readonly jitter: number;
+	/** Bumped per spin so React restarts the transition on "Spin again". */
+	readonly id: number;
 }
 
 /**
@@ -53,10 +83,11 @@ function makeSpin(candidates: readonly Recommendation[]): Spin | null {
 			picked.heist,
 		),
 		winner: picked.heist,
-		// Keep well inside the tile so the marker never straddles an edge.
-		jitter: Math.round((Math.random() - 0.5) * TILE * 0.5),
+		id: id++,
 	};
 }
+
+let id = 0;
 
 export function Roulette({ candidates, onClose }: Props) {
 	const dialog = useRef<HTMLDialogElement>(null);
@@ -95,7 +126,7 @@ export function Roulette({ candidates, onClose }: Props) {
 		return () => clearTimeout(t);
 	}, [running, reduced]);
 
-	const offset = spin ? -(WINNER_INDEX * TILE + TILE / 2 + spin.jitter) : 0;
+	const offset = spin ? -TRAVEL : 0;
 
 	return (
 		<dialog
@@ -142,13 +173,17 @@ export function Roulette({ candidates, onClose }: Props) {
 					</div>
 
 					<div
+						// Remounted per spin, which is what restarts the keyframe.
+						key={spin?.id}
 						className="absolute top-0 left-1/2 flex h-full items-center"
-						style={{
-							transform: `translateX(${running || settled ? offset : 0}px)`,
-							transition: running
-								? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.72, 0.1, 1)`
-								: 'none',
-						}}
+						style={
+							reduced
+								? { transform: `translateX(${offset}px)` }
+								: ({
+										'--spin-travel': `${offset}px`,
+										animation: `heist-spin ${SPIN_MS}ms ${EASING} forwards`,
+									} as CSSProperties)
+						}
 					>
 						{(spin?.reel ?? []).map((h, i) => (
 							<div

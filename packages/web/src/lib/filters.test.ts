@@ -38,6 +38,7 @@ const player = (
 	name: steamId === R ? 'yogizmo' : 'Eggsenbacon',
 	completed: Object.keys(unlocked).length,
 	unlocked,
+	ladder: {},
 });
 
 const CATALOG = [

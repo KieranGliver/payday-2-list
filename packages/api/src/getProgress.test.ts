@@ -1,4 +1,4 @@
-import { CATALOG } from '@pd2/shared';
+import { CATALOG, LADDER_IDS } from '@pd2/shared';
 import { describe, expect, it } from 'vitest';
 
 import { getProgress } from './getProgress.js';
@@ -135,5 +135,79 @@ describe('getProgress', () => {
 	it('returns an empty player list for no players', async () => {
 		const result = await getProgress([], fakeClient({}));
 		expect(result.players).toEqual([]);
+	});
+});
+
+describe('the difficulty ladder', () => {
+	const RUNGS = LADDER_IDS[FIRST as keyof typeof LADDER_IDS];
+
+	const rungOf = async (unlocked: Map<string, number>) => {
+		const result = await getProgress(
+			[R],
+			fakeClient({ [R.steamId]: unlocked }),
+		);
+		const [player] = result.players;
+		return player?.status === 'ok' ? player.ladder[FIRST] : undefined;
+	};
+
+	it('reports 0 when no rung is unlocked', async () => {
+		await expect(rungOf(new Map())).resolves.toBe(0);
+	});
+
+	it('reports every heist, not just the ones with progress', async () => {
+		const result = await getProgress(
+			[R],
+			fakeClient({ [R.steamId]: new Map() }),
+		);
+		const [player] = result.players;
+		expect(player?.status === 'ok' && Object.keys(player.ladder)).toHaveLength(
+			CATALOG.length,
+		);
+	});
+
+	it('reports the top rung as 7', async () => {
+		await expect(rungOf(new Map(RUNGS.map((id) => [id, 1])))).resolves.toBe(7);
+	});
+
+	it('reports a partial climb by its highest rung', async () => {
+		const upToMayhem = RUNGS.slice(0, 5).map((id) => [id, 1] as const);
+		await expect(rungOf(new Map(upToMayhem))).resolves.toBe(5);
+	});
+
+	/**
+	 * Steam awards "or above" achievements retroactively, so a gap is unusual
+	 * - our own two accounts have none today. It is still reachable: the plain
+	 * Death Sentence achievements shipped late and were never backfilled,
+	 * which is why that rung has a lower global unlock percentage than One
+	 * Down for 56 of 86 heists. Taking the highest can never report lower than
+	 * the player is; stopping at a gap can.
+	 */
+	it('takes the highest rung, not the first gap', async () => {
+		const withGap = RUNGS.filter((id) => id !== RUNGS[5]).map(
+			(id) => [id, 1] as const,
+		);
+		await expect(rungOf(new Map(withGap))).resolves.toBe(7);
+	});
+
+	it('reports the top rung even when only it is held', async () => {
+		await expect(rungOf(new Map([[RUNGS[6]!, 1]]))).resolves.toBe(7);
+	});
+
+	// A failed read carries no ladder at all, so "unknown" cannot be misread
+	// as "has never completed it".
+	it('omits the ladder entirely for a player whose read failed', async () => {
+		const result = await getProgress(
+			[R],
+			fakeClient({
+				[R.steamId]: new SteamError(
+					'private',
+					'profile is not public',
+					R.steamId,
+				),
+			}),
+		);
+		const [player] = result.players;
+		expect(player?.status).toBe('failed');
+		expect(player && 'ladder' in player).toBe(false);
 	});
 });

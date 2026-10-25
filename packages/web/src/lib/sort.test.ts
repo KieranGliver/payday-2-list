@@ -128,6 +128,7 @@ describe('sortHeists', () => {
 				name: 'yogizmo',
 				completed: 2,
 				unlocked: { a: 1_000, b: 2_000 },
+				ladder: {},
 			},
 		];
 

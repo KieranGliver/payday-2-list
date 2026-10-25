@@ -9,6 +9,8 @@
  */
 import { z } from 'zod';
 
+import { LADDER_RUNGS } from './types.js';
+
 /** SteamID64: 17 digits, always beginning 7656119. */
 export const steamIdSchema = z
 	.string()
@@ -33,6 +35,20 @@ export type Player = z.infer<typeof playerSchema>;
 const unlockedSchema = z.record(z.string(), z.number().int().nonnegative());
 
 /**
+ * Heist id -> the highest difficulty rung this player has cleared it on.
+ *
+ * 0 means "never completed on any difficulty"; 1-7 index LADDER_RUNGS. The One
+ * Down clear itself is not a rung - that lives in `unlocked`.
+ *
+ * Recommender input only; nothing reads this for display. Keys are loose
+ * strings for the same version-skew reason as `unlocked` above.
+ */
+const ladderSchema = z.record(
+	z.string(),
+	z.number().int().min(0).max(LADDER_RUNGS.length),
+);
+
+/**
  * A player's progress, as a discriminated union.
  *
  * The previous shape was a single object with an optional `error`, which meant
@@ -48,6 +64,14 @@ export const playerProgressSchema = z.discriminatedUnion('status', [
 		name: z.string(),
 		completed: z.number().int().nonnegative(),
 		unlocked: unlockedSchema,
+		/**
+		 * Defaulted, not required. Built assets are served immutable, so during
+		 * a deploy a cached bundle can talk to a Lambda that predates this
+		 * field. Requiring it would fail the whole parse and blank the page to
+		 * lose one recommender input; defaulting leaves every rung `undefined`,
+		 * which `ladderRung` already reports as unknown.
+		 */
+		ladder: ladderSchema.default({}),
 	}),
 	z.object({
 		status: z.literal('failed'),
@@ -110,6 +134,23 @@ export function unlockedAt(
 	heistId: string,
 ): number | undefined {
 	return player.status === 'ok' ? player.unlocked[heistId] : undefined;
+}
+
+/**
+ * How far up the difficulty ladder this player has cleared the heist.
+ *
+ * `undefined` means UNKNOWN - the read failed, or this heist is absent from
+ * the payload because a cached bundle is talking to an older Lambda. It does
+ * NOT mean rung 0, which is the real, known answer "never completed on any
+ * difficulty". Conflating the two is the bug that once reported a private
+ * profile as zero progress, and it would push a heist the pair have never
+ * touched to the top of the recommendations.
+ */
+export function ladderRung(
+	player: PlayerProgress,
+	heistId: string,
+): number | undefined {
+	return player.status === 'ok' ? player.ladder[heistId] : undefined;
 }
 
 /**

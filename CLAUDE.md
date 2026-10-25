@@ -10,15 +10,21 @@ that are not obvious from the code, and that cost real time to discover.
 npm test && npm run typecheck && npm run lint && npm run format:check
 ```
 
-CI runs exactly these plus both builds and a catalog-freshness check. `master`
-is protected: work on a branch and open a PR.
+CI runs exactly these plus both builds. `master` is protected: work on a
+branch and open a PR.
 
 ## Never hand-edit
 
 - `packages/shared/src/generated/steam.ts` — run `npm run sync:steam`. It is in
   `.prettierignore` and ESLint's ignores on purpose: formatting it would make
-  the next regeneration produce a spurious diff, and CI checks the committed
-  file still matches the generator's output.
+  the next regeneration produce a spurious diff.
+
+  CI used to assert the committed file still matched the generator's output.
+  That check had to go: Steam's global percentages differ by 0.1 between the
+  GitHub runners' region and a local machine, so it failed on every PR for
+  reasons that had nothing to do with the PR. Nothing now catches a hand-edit
+  to a generated file — the comment at the top of the file is the only guard.
+
 - `packages/web/src/components/ui/**` — the shadcn CLI regenerates these in its
   own style. Also ignored by both tools.
 

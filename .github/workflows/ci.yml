@@ -38,12 +38,3 @@ jobs:
       # a broken build fails the PR rather than the deploy.
       - run: npm run build
       - run: npm run package -w @pd2/api
-
-      # The committed catalog must match what the generator produces. Catches a
-      # hand-edit to a generated file, which would be silently overwritten on
-      # the next sync. Uses the keyless community-page path - no secret needed.
-      - name: Catalog is in sync with the generator
-        run: |
-          npm run sync:steam
-          git diff --exit-code packages/shared/src/generated/steam.ts \
-            || { echo "::error::generated/steam.ts is stale - run npm run sync:steam"; exit 1; }

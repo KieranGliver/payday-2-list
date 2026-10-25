@@ -51,15 +51,21 @@ export interface Factors {
  * and that limitation is accepted rather than corrected, because every
  * available correction introduces a worse bias of its own.
  *
- * Brevity is the one term at less than full weight: length should nudge the
- * order, not decide it, so a strong three-day candidate can still beat a
- * mediocre one-day one.
+ * Brevity and proximity both sit below full weight, for the same reason:
+ * neither should be able to decide the order on its own.
+ *
+ * Proximity in particular is scored as 1 / remaining, so a contractor one
+ * heist from a badge scores the maximum. At full weight that single fact
+ * outweighed every judgement we make about the heist itself - a badge is a
+ * nice-to-have, not a reason to play something we rate hard and have never
+ * loaded. At 0.75 it still lifts a nearly-finished set above an equal
+ * alternative without carrying the decision.
  */
 export const WEIGHTS: Factors = {
 	rarity: 1,
 	closeness: 1,
 	ease: 1,
-	proximity: 1,
+	proximity: 0.75,
 	brevity: 0.5,
 };
 

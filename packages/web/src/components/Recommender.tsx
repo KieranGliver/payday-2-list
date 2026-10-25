@@ -6,7 +6,8 @@ import {
 	type Factors,
 	type Recommendation,
 } from '@pd2/shared';
-import { TriangleAlert } from 'lucide-react';
+import { Dices, TriangleAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Props {
 	readonly recommendations: readonly Recommendation[];
@@ -14,6 +15,8 @@ interface Props {
 	readonly worst: readonly Recommendation[];
 	/** Shown while progress is still loading, so the panel doesn't flash empty. */
 	readonly loading: boolean;
+	readonly onSpin: () => void;
+	readonly canSpin: boolean;
 }
 
 /** 1-7 into LADDER_RUNGS; 0 means never completed on any difficulty. */
@@ -134,7 +137,13 @@ const difficultyColor: Record<string, string> = {
  * 2.85 against 2.79 invites false precision. The ordering and the reason are
  * the parts that mean anything.
  */
-export function Recommender({ recommendations, worst, loading }: Props) {
+export function Recommender({
+	recommendations,
+	worst,
+	loading,
+	onSpin,
+	canSpin,
+}: Props) {
 	const partial = recommendations.some((r) => r.partial);
 
 	return (
@@ -146,6 +155,17 @@ export function Recommender({ recommendations, worst, loading }: Props) {
 				>
 					Play next
 				</h2>
+				<div className="flex items-center gap-3">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onSpin}
+						disabled={!canSpin || loading}
+					>
+						<Dices aria-hidden />
+						Random heist
+					</Button>
+				</div>
 				{partial ? (
 					<p className="flex items-center gap-1.5 text-xs text-destructive">
 						<TriangleAlert

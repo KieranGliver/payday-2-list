@@ -14,6 +14,7 @@ import { Filters } from '@/components/Filters';
 import { VaultHero } from '@/components/VaultHero';
 import { HeistTable } from '@/components/HeistTable';
 import { Recommender } from '@/components/Recommender';
+import { Roulette } from '@/components/Roulette';
 import { Button } from '@/components/ui/button';
 import { applyFilters, INITIAL_FILTERS, type FilterState } from '@/lib/filters';
 import {
@@ -31,6 +32,7 @@ export default function App() {
 	const { state, reload } = useProgress();
 	const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
 	const [sort, setSort] = useState<SortState>(INITIAL_SORT);
+	const [spinning, setSpinning] = useState(false);
 
 	const players = useMemo(
 		() => (state.status === 'ready' ? state.data.players : NO_PLAYERS),
@@ -90,6 +92,12 @@ export default function App() {
 	);
 	const worst = useMemo(
 		() => leastRecommended(CATALOG, players, badges),
+		[players, badges],
+	);
+	// Every heist still outstanding, not just the top few - the wheel draws
+	// from the whole pool, weighted by score.
+	const spinPool = useMemo(
+		() => recommend(CATALOG, players, badges, { limit: CATALOG.length }),
 		[players, badges],
 	);
 
@@ -162,7 +170,16 @@ export default function App() {
 					recommendations={recommendations}
 					worst={worst}
 					loading={state.status === 'loading'}
+					onSpin={() => setSpinning(true)}
+					canSpin={spinPool.length > 0}
 				/>
+
+				{spinning ? (
+					<Roulette
+						candidates={spinPool}
+						onClose={() => setSpinning(false)}
+					/>
+				) : null}
 
 				<BadgeWall
 					badges={badges}

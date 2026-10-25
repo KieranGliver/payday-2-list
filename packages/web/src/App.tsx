@@ -1,6 +1,7 @@
 import {
 	CATALOG,
 	hasCleared,
+	leastRecommended,
 	recommend,
 	resolveBadges,
 	okPlayers,
@@ -87,6 +88,10 @@ export default function App() {
 		() => recommend(CATALOG, players, badges),
 		[players, badges],
 	);
+	const worst = useMemo(
+		() => leastRecommended(CATALOG, players, badges),
+		[players, badges],
+	);
 
 	/** Clicking the active column flips direction; a new column starts ascending. */
 	const onSort = (key: SortKey) =>
@@ -155,6 +160,7 @@ export default function App() {
 
 				<Recommender
 					recommendations={recommendations}
+					worst={worst}
 					loading={state.status === 'loading'}
 				/>
 

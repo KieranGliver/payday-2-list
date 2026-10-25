@@ -1,6 +1,14 @@
 export { CATALOG, BY_ID } from './catalog.js';
 export { badgeTally, resolveBadges, type Badge } from './badges.js';
 export {
+	recommend,
+	topFactors,
+	WEIGHTS,
+	type Factors,
+	type RarityScale,
+	type Recommendation,
+} from './recommend.js';
+export {
 	META_ACHIEVEMENTS,
 	STEAM_HEISTS,
 	type HeistId,
@@ -14,6 +22,7 @@ export {
 	apiErrorSchema,
 	ContractError,
 	hasCleared,
+	ladderRung,
 	okPlayers,
 	parseProgressResult,
 	playerProgressSchema,

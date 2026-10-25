@@ -1,6 +1,7 @@
 import {
 	CATALOG,
 	hasCleared,
+	recommend,
 	resolveBadges,
 	okPlayers,
 	type PlayerProgress,
@@ -11,6 +12,7 @@ import { BadgeWall } from '@/components/BadgeWall';
 import { Filters } from '@/components/Filters';
 import { VaultHero } from '@/components/VaultHero';
 import { HeistTable } from '@/components/HeistTable';
+import { Recommender } from '@/components/Recommender';
 import { Button } from '@/components/ui/button';
 import { applyFilters, INITIAL_FILTERS, type FilterState } from '@/lib/filters';
 import {
@@ -79,6 +81,13 @@ export default function App() {
 		[allBadges],
 	);
 
+	// Deliberately NOT filtered: "what should we play next" is a question about
+	// everything outstanding, not about whatever the table is showing.
+	const recommendations = useMemo(
+		() => recommend(CATALOG, players, badges),
+		[players, badges],
+	);
+
 	/** Clicking the active column flips direction; a new column starts ascending. */
 	const onSort = (key: SortKey) =>
 		setSort((s) =>
@@ -143,6 +152,11 @@ export default function App() {
 						unreadable={unreadable.length}
 					/>
 				) : null}
+
+				<Recommender
+					recommendations={recommendations}
+					loading={state.status === 'loading'}
+				/>
 
 				<BadgeWall
 					badges={badges}

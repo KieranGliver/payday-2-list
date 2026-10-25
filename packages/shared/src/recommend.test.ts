@@ -299,8 +299,47 @@ describe('recommend', () => {
 	});
 
 	describe('scoring mechanics', () => {
-		it('weights brevity below the full-weight terms', () => {
+		// Neither should be able to decide the order on its own. Proximity
+		// especially: scored as 1 / remaining, a single heist from a badge hits
+		// the maximum, and at full weight that one fact outweighed everything
+		// we actually know about the heist.
+		it('weights brevity and proximity below the full-weight terms', () => {
 			expect(WEIGHTS.brevity).toBeLessThan(WEIGHTS.ease);
+			expect(WEIGHTS.proximity).toBeLessThan(WEIGHTS.ease);
+			expect(WEIGHTS.proximity).toBeLessThan(WEIGHTS.closeness);
+		});
+
+		/**
+		 * The point of the reduced weight: a badge one heist away must not beat
+		 * a heist that is better on everything we judge ourselves. Here the
+		 * second heist is easier, shorter and one we have both already cleared
+		 * on Death Sentence, against a HARD three-day heist nobody has touched.
+		 */
+		it('does not let a nearly-finished badge outweigh everything else', () => {
+			const rows = [
+				heist({
+					id: 'badge',
+					heist: 'Badge',
+					contractor: 'Bain',
+					perceivedDifficulty: 'HARD',
+					days: 3,
+				}),
+				heist({
+					id: 'better',
+					heist: 'Better',
+					contractor: 'Vlad',
+					perceivedDifficulty: 'EASY',
+					days: 1,
+				}),
+			];
+			const players = [
+				player(R, { ladder: { badge: 0, better: 7 } }),
+				player(K, { ladder: { badge: 0, better: 7 } }),
+			];
+			const badges = [badge({ contractor: 'Bain', done: 3, of: 4 })];
+			expect(recommend(rows, players, badges, { limit: 2 })[0]?.heist.id).toBe(
+				'better',
+			);
 		});
 
 		it('sums the weighted contributions into the score', () => {

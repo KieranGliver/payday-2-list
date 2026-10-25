@@ -1,5 +1,19 @@
 // Our own judgements about each heist. HAND-MAINTAINED.
 //
+// `approach` is the exception: it is a FACT about the heist, not a preference.
+// LOUD means stealth is impossible, STEALTH means the alarm fails the heist,
+// BOTH means either works - including a multi-day heist with a stealth day and
+// a loud day. It was checked against the Payday 2 wiki's "Loud-Only Heists"
+// and "Stealth Heists" categories; 27 of 86 were wrong, mostly heists marked
+// LOUD that can in fact be stealthed.
+//
+// The five stealth-only heists (Shadow Raid, Car Shop, Murky Station, The
+// Yacht Heist, Breakin' Feds) have no category of their own - that list comes
+// from the explicit wording on those pages and the cross-reference on Murky
+// Station's. Nine heists carry no usable signal on the wiki at all and were
+// left as they were: Counterfeit, Diamond Heist, First World Bank, Green
+// Bridge, Heat Street, No Mercy, Panic Room, Slaughterhouse, Undercover.
+//
 // The generator (npm run sync:steam) never writes this file, so these survive
 // regeneration. Bootstrapped from the original tracking spreadsheet.
 //
@@ -14,7 +28,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Art Gallery
 	axe_33: {
 		contractor: 'Bain',
-		approach: 'STEALTH',
+		approach: 'BOTH',
 		perceivedDifficulty: 'EASY',
 	},
 	// Bank Heist: Cash
@@ -116,7 +130,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Transport: Train Heist
 	axe_26: {
 		contractor: 'Bain',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'HARD',
 	},
 	// Transport: Underpass
@@ -136,13 +150,13 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Crude Awakening
 	deep_8: {
 		contractor: 'Blaine Keegan',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'HARD',
 	},
 	// Hostile Takeover
 	corp_8: {
 		contractor: 'Blaine Keegan',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 
@@ -238,13 +252,13 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Lost In Transit
 	trai_8: {
 		contractor: 'Gemma McShay',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Midland Ranch
 	ranc_8: {
 		contractor: 'Gemma McShay',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 
@@ -252,7 +266,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Firestarter
 	axe_9: {
 		contractor: 'Hector',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'HARD',
 	},
 	// Rats
@@ -278,7 +292,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Murky Station
 	axe_53: {
 		contractor: 'Jimmy',
-		approach: 'LOUD',
+		approach: 'STEALTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 
@@ -286,13 +300,13 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Dragon Heist
 	chas_8: {
 		contractor: 'Jiu Feng',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Ukrainian Prisoner
 	sand_8: {
 		contractor: 'Jiu Feng',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 
@@ -318,7 +332,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Border Crossing
 	mex_8: {
 		contractor: 'Locke',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Border Crystals
@@ -330,7 +344,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Breakfast in Tijuana
 	pex_8: {
 		contractor: 'Locke',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Breakin' Feds
@@ -342,7 +356,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Brooklyn Bank
 	brb_7: {
 		contractor: 'Locke',
-		approach: 'BOTH',
+		approach: 'LOUD',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Hell's Island
@@ -360,7 +374,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Shacklethorne Auction
 	sah_8: {
 		contractor: 'Locke',
-		approach: 'STEALTH',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// The White House
@@ -374,7 +388,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Mountain Master
 	pent_8: {
 		contractor: 'Shayu',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 
@@ -382,13 +396,13 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Scarface Mansion
 	friend_3: {
 		contractor: 'The Butcher',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// The Bomb: Dockyard
 	axe_61: {
 		contractor: 'The Butcher',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'HARD',
 	},
 	// The Bomb: Forest
@@ -408,7 +422,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// The Yacht Heist
 	fish_3: {
 		contractor: 'The Continental',
-		approach: 'LOUD',
+		approach: 'STEALTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 
@@ -434,7 +448,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Hoxton Revenge
 	axe_39: {
 		contractor: 'The Dentist',
-		approach: 'STEALTH',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// The Big Bank
@@ -446,7 +460,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// The Diamond
 	axe_36: {
 		contractor: 'The Dentist',
-		approach: 'STEALTH',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 
@@ -454,7 +468,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Big Oil
 	axe_13: {
 		contractor: 'The Elephant',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Election Day
@@ -466,7 +480,7 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Framing Frame
 	axe_11: {
 		contractor: 'The Elephant',
-		approach: 'STEALTH',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// The Biker Heist
@@ -486,19 +500,19 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// Black Cat
 	chca_8: {
 		contractor: 'Vlad',
-		approach: 'STEALTH',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Buluc's Mansion
 	fex_8: {
 		contractor: 'Vlad',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Four Stores
 	axe_3: {
 		contractor: 'Vlad',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'HARD',
 	},
 	// Goat Simulator
@@ -528,13 +542,13 @@ export const RATINGS: Record<HeistId, Rating> = {
 	// San Martín Bank
 	bex_8: {
 		contractor: 'Vlad',
-		approach: 'LOUD',
+		approach: 'BOTH',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Santa's Workshop
 	axe_54: {
 		contractor: 'Vlad',
-		approach: 'BOTH',
+		approach: 'LOUD',
 		perceivedDifficulty: 'MEDIUM',
 	},
 	// Stealing Xmas

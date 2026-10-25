@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	ContractError,
 	hasCleared,
+	ladderRung,
 	okPlayers,
 	parseProgressResult,
 	unlockedAt,
@@ -12,12 +13,16 @@ import {
 const R = '76561198103504838';
 const K = '76561198096708910';
 
-const ok = (unlocked: Record<string, number>): PlayerProgress => ({
+const ok = (
+	unlocked: Record<string, number>,
+	ladder: Record<string, number> = {},
+): PlayerProgress => ({
 	status: 'ok',
 	steamId: R,
 	name: 'yogizmo',
 	completed: Object.keys(unlocked).length,
 	unlocked,
+	ladder,
 });
 
 const failed = (reason = 'profile is not public'): PlayerProgress => ({
@@ -121,5 +126,58 @@ describe('accessors', () => {
 		);
 		expect(overAll).toHaveLength(0); // what the old code computed
 		expect(overOk).toHaveLength(2); // what it should have computed
+	});
+});
+
+describe('ladderRung', () => {
+	const player = ok({}, { axe_45: 6, axe_33: 0 });
+
+	it('reports the rung a player has reached', () => {
+		expect(ladderRung(player, 'axe_45')).toBe(6);
+	});
+
+	/**
+	 * The distinction the whole field depends on. Rung 0 is a real answer -
+	 * "never completed on any difficulty". `undefined` is "we do not know".
+	 * A recommender that reads them the same way would rank a heist the pair
+	 * have never touched identically to one it has no data for.
+	 */
+	it('distinguishes rung 0 from unknown', () => {
+		expect(ladderRung(player, 'axe_33')).toBe(0);
+		expect(ladderRung(player, 'axe_19')).toBeUndefined();
+	});
+
+	it('reports unknown for a player whose read failed', () => {
+		expect(ladderRung(failed(), 'axe_45')).toBeUndefined();
+	});
+
+	/**
+	 * Assets are served immutable, so a cached bundle can reach a Lambda that
+	 * predates the ladder. That must degrade to "unknown", never fail the
+	 * parse and blank the page.
+	 */
+	it('parses a payload from a Lambda that sends no ladder', () => {
+		const old = {
+			fetchedAt: valid.fetchedAt,
+			total: 86,
+			players: [
+				{
+					status: 'ok',
+					steamId: R,
+					name: 'yogizmo',
+					completed: 1,
+					unlocked: { axe_45: 1_700_000_000 },
+				},
+			],
+		};
+		const parsed = parseProgressResult(old);
+		expect(parsed.players[0]?.status).toBe('ok');
+		expect(ladderRung(parsed.players[0]!, 'axe_45')).toBeUndefined();
+	});
+
+	it('rejects a rung outside the ladder', () => {
+		expect(() =>
+			parseProgressResult({ ...valid, players: [ok({}, { axe_45: 8 })] }),
+		).toThrow(ContractError);
 	});
 });

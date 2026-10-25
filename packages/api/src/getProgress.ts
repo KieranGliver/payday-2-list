@@ -1,5 +1,6 @@
 import {
 	CATALOG,
+	LADDER_IDS,
 	META_ACHIEVEMENTS,
 	type Player,
 	type PlayerProgress,
@@ -20,8 +21,37 @@ export type { Player, PlayerProgress, ProgressResult };
  * not read" for "has cleared nothing".
  *
  * Only achievements in the catalog are returned - Payday 2 has ~1342
- * achievements and we care about 86 of them.
+ * achievements and we care about 86 of them, plus the 602 difficulty rungs
+ * that are summarised into `ladder` rather than returned individually.
  */
+/**
+ * The highest rung this player has cleared, or 0 for none.
+ *
+ * Scans the WHOLE ladder and takes the highest hit rather than stopping at
+ * the first gap.
+ *
+ * Steam awards an "or above" achievement retroactively, so an uninterrupted
+ * ladder is the normal case - on our own two accounts the two approaches
+ * agree on all 86 heists today. But they are not equivalent in general: the
+ * plain Death Sentence achievements shipped in a later update and were never
+ * backfilled, which is why for 56 of 86 heists that rung has a LOWER global
+ * unlock percentage than the One Down achievement above it. Anyone who
+ * stopped playing before that update holds the rungs around it and not it.
+ *
+ * Taking the highest can never report lower than the player actually is;
+ * stopping at a gap can. That asymmetry is the whole reason for the choice.
+ */
+function highestRung(
+	unlocked: ReadonlyMap<string, number>,
+	rungIds: readonly string[],
+): number {
+	let highest = 0;
+	for (const [i, id] of rungIds.entries()) {
+		if (unlocked.has(id)) highest = i + 1;
+	}
+	return highest;
+}
+
 export async function getProgress(
 	players: readonly Player[],
 	client: SteamClient,
@@ -31,6 +61,7 @@ export async function getProgress(
 			try {
 				const unlocked = await client.getUnlocked(player.steamId);
 				const mine: Record<string, number> = {};
+				const ladder: Record<string, number> = {};
 				let completed = 0;
 				for (const heist of CATALOG) {
 					const at = unlocked.get(heist.id);
@@ -38,6 +69,7 @@ export async function getProgress(
 						mine[heist.id] = at;
 						completed += 1;
 					}
+					ladder[heist.id] = highestRung(unlocked, LADDER_IDS[heist.id]);
 				}
 				// The whole-contractor achievements ride along in the same map so
 				// the badge wall can read Steam's own verdict, but they are NOT
@@ -53,6 +85,7 @@ export async function getProgress(
 					name: player.name,
 					completed,
 					unlocked: mine,
+					ladder,
 				};
 			} catch (cause) {
 				// Only SteamError messages are known to be safe to show. Anything

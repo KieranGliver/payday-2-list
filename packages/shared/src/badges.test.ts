@@ -19,6 +19,7 @@ const ok = (steamId: string, ids: readonly string[]): PlayerProgress => ({
 	name: steamId,
 	completed: ids.length,
 	unlocked: Object.fromEntries(ids.map((id) => [id, 1])),
+	ladder: {},
 });
 
 const badge = (players: PlayerProgress[], id = VLAD_META) =>

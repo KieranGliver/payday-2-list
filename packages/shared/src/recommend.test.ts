@@ -365,6 +365,54 @@ describe('recommend', () => {
 		});
 	});
 
+	describe('facts for the reason text', () => {
+		/**
+		 * The UI names the difficulty we reached rather than quoting a score, so
+		 * the raw rung has to survive scoring. Reversing it out of
+		 * `factors.closeness` would mean dividing a float back by 7 and rounding.
+		 */
+		it('reports the rung both players reached', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 7 } }),
+				player(K, { ladder: { a: 5 } }),
+			];
+			expect(recommend(rows, players, [])[0]?.rung).toBe(5);
+		});
+
+		// Unknown is not rung 0: one has nothing to say, the other says
+		// "never completed on any difficulty".
+		it('separates an unknown rung from rung 0', () => {
+			const rows = [heist({ id: 'a' })];
+			const none: PlayerProgress[] = [
+				{ status: 'failed', steamId: R, name: 'R', reason: 'private' },
+			];
+			expect(recommend(rows, none, [])[0]?.rung).toBeUndefined();
+			expect(
+				recommend(rows, [player(R, { ladder: { a: 0 } })], [])[0]?.rung,
+			).toBe(0);
+		});
+
+		it('reports how many heists are left for the contractor', () => {
+			const rows = [heist({ id: 'a', contractor: 'Bain' })];
+			const badges = [badge({ done: 3, of: 4 })];
+			expect(recommend(rows, PLAYERS, badges)[0]?.contractorLeft).toBe(1);
+		});
+
+		it('reports no remainder when there is no badge to earn', () => {
+			const rows = [heist({ id: 'a', contractor: 'Shayu' })];
+			expect(
+				recommend(rows, PLAYERS, [badge({})])[0]?.contractorLeft,
+			).toBeNull();
+		});
+
+		it('reports no remainder once the badge is earned', () => {
+			const rows = [heist({ id: 'a', contractor: 'Bain' })];
+			const earned = [badge({ earned: true, done: 4, of: 4 })];
+			expect(recommend(rows, PLAYERS, earned)[0]?.contractorLeft).toBeNull();
+		});
+	});
+
 	describe('topFactors', () => {
 		it('names the largest contributors first', () => {
 			const rows = [

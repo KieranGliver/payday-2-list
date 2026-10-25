@@ -77,6 +77,18 @@ export interface Recommendation {
 	 * fewer players than it should be. Never silently folded into the score.
 	 */
 	readonly partial: boolean;
+	/**
+	 * The rung both players have reached, 1-7 into LADDER_RUNGS, or 0 for
+	 * none. `undefined` means unknown, which is not the same as 0 - so the UI
+	 * can name the difficulty we got to rather than describing a score.
+	 */
+	readonly rung: number | undefined;
+	/**
+	 * Heists left before this contractor's badge is earned, or null when there
+	 * is no badge to earn. Lets the reason say "2 left to finish Vlad" instead
+	 * of quoting a fraction.
+	 */
+	readonly contractorLeft: number | null;
 }
 
 /**
@@ -120,7 +132,8 @@ function rarityScale(
 }
 
 /**
- * How far up the ladder the pair are, as 0-1.
+ * The highest rung BOTH players have reached, or undefined if nobody's data
+ * could be read.
  *
  * The MINIMUM across players, not the average: a heist one of us has cleared
  * on Death Wish and the other has never loaded is not a heist we are nearly
@@ -128,16 +141,15 @@ function rarityScale(
  * rather than counted as rung 0 - unknown is not zero, and treating it as zero
  * would drag every heist's closeness down whenever a profile goes private.
  */
-function closenessOf(
+function sharedRung(
 	players: readonly PlayerProgress[],
 	heistId: string,
-): number {
+): number | undefined {
 	const rungs = players
 		.map((p) => ladderRung(p, heistId))
 		.filter((r): r is number => r !== undefined);
 
-	if (rungs.length === 0) return 0;
-	return Math.min(...rungs) / LADDER_RUNGS.length;
+	return rungs.length === 0 ? undefined : Math.min(...rungs);
 }
 
 /**
@@ -148,12 +160,14 @@ function closenessOf(
  * Overkill never shipped a meta achievement for (Jiu Feng, Gemma McShay,
  * Blaine Keegan, Shayu); their heists simply do not get this bonus.
  */
-function proximityOf(badges: readonly Badge[], heist: Heist): number {
+function contractorBadge(
+	badges: readonly Badge[],
+	heist: Heist,
+): Badge | undefined {
 	const badge = badges.find(
 		(b) => !b.isEverything && b.contractor === heist.contractor,
 	);
-	if (!badge || badge.earned || badge.of === 0) return 0;
-	return badge.done / badge.of;
+	return !badge || badge.earned || badge.of === 0 ? undefined : badge;
 }
 
 export interface RecommendOptions {
@@ -180,11 +194,14 @@ export function recommend(
 	const scored = catalog
 		.filter((h) => !(ok.length > 0 && ok.every((p) => hasCleared(p, h.id))))
 		.map((heist): Recommendation => {
+			const rung = sharedRung(players, heist.id);
+			const badge = contractorBadge(badges, heist);
+
 			const factors: Factors = {
 				rarity: rarity.get(heist.id) ?? 0,
-				closeness: closenessOf(players, heist.id),
+				closeness: (rung ?? 0) / LADDER_RUNGS.length,
 				ease: EASE[heist.perceivedDifficulty],
-				proximity: proximityOf(badges, heist),
+				proximity: badge ? badge.done / badge.of : 0,
 				brevity: BREVITY[heist.days],
 			};
 
@@ -197,7 +214,15 @@ export function recommend(
 			};
 
 			const score = Object.values(contributions).reduce((a, b) => a + b, 0);
-			return { heist, score, factors, contributions, partial };
+			return {
+				heist,
+				score,
+				factors,
+				contributions,
+				partial,
+				rung,
+				contractorLeft: badge ? badge.of - badge.done : null,
+			};
 		});
 
 	// Heist name breaks ties, matching the table's sort, so equal scores come

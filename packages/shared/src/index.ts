@@ -7,6 +7,7 @@ export {
 	weakestFactors,
 	WEIGHTS,
 	type Factors,
+	type PlayerStanding,
 	type RarityScale,
 	type Recommendation,
 } from './recommend.js';

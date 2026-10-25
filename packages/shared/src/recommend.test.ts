@@ -272,22 +272,127 @@ describe('recommend', () => {
 	describe('the ladder term', () => {
 		// The pair is as ready as its less experienced half. Averaging would
 		// call a heist one of us has never loaded "half done".
-		it('takes the minimum across players, not the average', () => {
+		/**
+		 * The weakest half dominates: a heist we have BOTH taken to Mayhem
+		 * beats one a single player has taken to Death Sentence and the other
+		 * has never loaded.
+		 *
+		 *   both at 5 -> (5 + 5 + 5) / 3 = 5.00
+		 *   7 and 0   -> (7 + 0 + 0) / 3 = 2.33
+		 */
+		it('lets the least experienced half dominate', () => {
 			const rows = pair({}, {});
 			const players = [
-				// a: rungs 7 and 1 -> min 1, mean 4.
-				// b: rungs 3 and 3 -> min 3, mean 3.
-				// The two rules disagree on the ORDER here, which is the only way
-				// this test can tell them apart - picking numbers where min and
-				// mean happen to rank the same way asserts nothing.
-				player(R, { ladder: { a: 7, b: 3 } }),
-				player(K, { ladder: { a: 1, b: 3 } }),
+				player(R, { ladder: { a: 7, b: 5 } }),
+				player(K, { ladder: { a: 0, b: 5 } }),
 			];
 			const [first, second] = recommend(rows, players, [], { limit: 2 });
 			expect(first?.heist.id).toBe('b');
-			expect(second?.heist.id).toBe('a');
-			expect(first?.factors.closeness).toBeCloseTo(3 / 7, 10);
+			expect(first?.factors.closeness).toBeCloseTo(5 / 7, 10);
+			expect(second?.factors.closeness).toBeCloseTo(7 / 3 / 7, 10);
+		});
+
+		/**
+		 * ...but one player knowing the map is no longer thrown away. A plain
+		 * minimum scored these identically, because both have a floor of 1.
+		 *
+		 *   5 and 1 -> (5 + 1 + 1) / 3 = 2.33
+		 *   1 and 1 -> (1 + 1 + 1) / 3 = 1.00
+		 */
+		it('credits the player who has taken it further', () => {
+			const rows = pair({}, {});
+			const players = [
+				player(R, { ladder: { a: 5, b: 1 } }),
+				player(K, { ladder: { a: 1, b: 1 } }),
+			];
+			const [first, second] = recommend(rows, players, [], { limit: 2 });
+			expect(first?.heist.id).toBe('a');
+			expect(first?.factors.closeness).toBeCloseTo(7 / 3 / 7, 10);
 			expect(second?.factors.closeness).toBeCloseTo(1 / 7, 10);
+		});
+
+		it('is unchanged when both players are level', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 6 } }),
+				player(K, { ladder: { a: 6 } }),
+			];
+			expect(recommend(rows, players, [])[0]?.factors.closeness).toBeCloseTo(
+				6 / 7,
+				10,
+			);
+		});
+
+		it("reports every player's own rung, furthest first", () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 7 } }),
+				player(K, { ladder: { a: 2 } }),
+			];
+			const [rec] = recommend(rows, players, []);
+			expect(rec?.rung).toBe(2);
+			expect(rec?.perPlayer).toEqual([
+				{ name: 'yogizmo', rung: 7 },
+				{ name: 'Eggsenbacon', rung: 2 },
+			]);
+		});
+
+		// Deliberately the SECOND player in the list. With the leader always
+		// first, "sort by rung" and "leave as given" are the same thing and
+		// the assertion proves nothing.
+		it('orders by rung, not by the order players were given in', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 2 } }),
+				player(K, { ladder: { a: 7 } }),
+			];
+			expect(recommend(rows, players, [])[0]?.perPlayer).toEqual([
+				{ name: 'Eggsenbacon', rung: 7 },
+				{ name: 'yogizmo', rung: 2 },
+			]);
+		});
+
+		it('keeps a player who has never finished it, at rung 0', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 6 } }),
+				player(K, { ladder: { a: 0 } }),
+			];
+			const [rec] = recommend(rows, players, []);
+			expect(rec?.rung).toBe(0);
+			expect(rec?.perPlayer).toEqual([
+				{ name: 'yogizmo', rung: 6 },
+				{ name: 'Eggsenbacon', rung: 0 },
+			]);
+		});
+
+		// A failed read is absent entirely rather than appearing at rung 0.
+		it('leaves an unreadable player out of the breakdown', () => {
+			const rows = [heist({ id: 'a' })];
+			const players: PlayerProgress[] = [
+				player(R, { ladder: { a: 6 } }),
+				{
+					status: 'failed',
+					steamId: K,
+					name: 'Eggsenbacon',
+					reason: 'private',
+				},
+			];
+			expect(recommend(rows, players, [])[0]?.perPlayer).toEqual([
+				{ name: 'yogizmo', rung: 6 },
+			]);
+		});
+
+		it('is unchanged when both players are level', () => {
+			const rows = [heist({ id: 'a' })];
+			const players = [
+				player(R, { ladder: { a: 6 } }),
+				player(K, { ladder: { a: 6 } }),
+			];
+			expect(recommend(rows, players, [])[0]?.factors.closeness).toBeCloseTo(
+				6 / 7,
+				10,
+			);
 		});
 
 		it('maps the top rung to a full score', () => {

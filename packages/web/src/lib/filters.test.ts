@@ -7,6 +7,7 @@ import {
 	toApproach,
 	toCompletion,
 	toContractor,
+	toDays,
 	toDifficulty,
 	type FilterState,
 } from './filters.js';
@@ -24,6 +25,7 @@ const heist = (over: Partial<Heist>): Heist => ({
 	contractor: 'Bain',
 	approach: 'LOUD',
 	perceivedDifficulty: 'MEDIUM',
+	days: 1,
 	...over,
 });
 
@@ -121,6 +123,21 @@ describe('applyFilters', () => {
 		]);
 	});
 
+	it('filters by days', () => {
+		const rows = [
+			heist({ id: '1', days: 1 }),
+			heist({ id: '2', days: 2 }),
+			heist({ id: '3', days: 3 }),
+		];
+		expect(ids(applyFilters(rows, [], with_({ days: 1 })))).toEqual(['1']);
+		expect(ids(applyFilters(rows, [], with_({ days: 3 })))).toEqual(['3']);
+		expect(ids(applyFilters(rows, [], with_({ days: 'all' })))).toEqual([
+			'1',
+			'2',
+			'3',
+		]);
+	});
+
 	it('combines dimensions', () => {
 		const rows = [
 			heist({ id: '1', contractor: 'Vlad', approach: 'STEALTH' }),
@@ -150,7 +167,21 @@ describe('narrowing select values', () => {
 		expect(toContractor('Vlad')).toBe('Vlad');
 		expect(toApproach('STEALTH')).toBe('STEALTH');
 		expect(toDifficulty('HARD')).toBe('HARD');
+		expect(toDays('2')).toBe(2);
 	});
+
+	/**
+	 * Days is the only narrower whose state is numeric, so the result must be
+	 * the NUMBER 2 rather than the string - `h.days === f.days` is false for
+	 * every row otherwise. These are the spellings a Number() parse would have
+	 * waved through: Number('') is 0, Number(' ') is 0, Number('1e0') is 1.
+	 */
+	it.each(['', ' ', '0', '4', '2.5', 'two', 'NaN', 'Infinity', '1e0'])(
+		'rejects %j as a day count',
+		(value) => {
+			expect(toDays(value)).toBe('all');
+		},
+	);
 
 	it.each(['', 'Nonsense', 'vlad', '__proto__'])(
 		'falls back to "all" for %j',
@@ -158,6 +189,7 @@ describe('narrowing select values', () => {
 			expect(toContractor(value)).toBe('all');
 			expect(toApproach(value)).toBe('all');
 			expect(toDifficulty(value)).toBe('all');
+			expect(toDays(value)).toBe('all');
 		},
 	);
 

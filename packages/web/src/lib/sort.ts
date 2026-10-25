@@ -10,6 +10,7 @@ export type SortKey =
 	| 'contractor'
 	| 'approach'
 	| 'difficulty'
+	| 'days'
 	| 'globalPct'
 	| `player:${string}`;
 
@@ -49,6 +50,10 @@ function value(
 			return heist.approach;
 		case 'difficulty':
 			return difficultyRank(heist);
+		// An explicit case, not a fall-through: the default arm reads the key as
+		// `player:<steamId>` and would slice 'days' into a steamId lookup.
+		case 'days':
+			return heist.days;
 		case 'globalPct':
 			return heist.globalPct;
 		default: {

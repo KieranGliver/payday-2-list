@@ -172,6 +172,15 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
 								onSort={onSort}
 							/>
 						</TableHead>
+						<TableHead className="min-w-20 text-right">
+							<SortButton
+								label="Days"
+								columnKey="days"
+								sort={sort}
+								onSort={onSort}
+								align="right"
+							/>
+						</TableHead>
 						<TableHead className="min-w-24 text-right">
 							<SortButton
 								label="Global %"
@@ -246,6 +255,9 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
 								</Badge>
 							</TableCell>
 							<TableCell className="text-right text-muted-foreground tabular-nums">
+								{h.days}d
+							</TableCell>
+							<TableCell className="text-right text-muted-foreground tabular-nums">
 								{h.globalPct.toFixed(1)}%
 							</TableCell>
 							{players.map((p) => (
@@ -268,7 +280,7 @@ export function HeistTable({ heists, players, sort, onSort }: Props) {
 					{heists.length === 0 ? (
 						<TableRow>
 							<TableCell
-								colSpan={5 + players.length}
+								colSpan={6 + players.length}
 								className="h-24 text-center text-muted-foreground"
 							>
 								No heists match these filters.

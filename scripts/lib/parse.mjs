@@ -81,3 +81,79 @@ export function toPercent(value) {
  */
 export const quote = (v) =>
 	`'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+
+/** The seven rungs below One Down, ascending. Mirrors LADDER_RUNGS in shared. */
+export const LADDER_RUNGS = [
+	'Normal',
+	'Hard',
+	'Very Hard',
+	'OVERKILL',
+	'Mayhem',
+	'Death Wish',
+	'Death Sentence',
+];
+
+/** Literal text, safe to embed in a RegExp. */
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Descriptions arrive with escaping artefacts and irregular whitespace from
+ * whichever source produced them. Normalising once keeps the rung patterns
+ * readable instead of threading `\s*` through every one of them.
+ */
+export const normaliseDescription = (d) =>
+	(d ?? '').replaceAll('\\', '').replace(/\s+/g, ' ').trim();
+
+/**
+ * Matches "Complete [the] <heist> [job] on the <rung> difficulty [or above]".
+ *
+ * Built from a KNOWN heist name rather than parsing a name out of the
+ * description, which is the only approach that survives Steam's real data.
+ * Four separate traps, each of which silently costs rungs:
+ *
+ *   - Trailing reward prose. "...on the Normal difficulty or above. Unlocks
+ *     the "Winter Camo Parka" outfit." An end-anchored match drops the rung,
+ *     so this matches a PREFIX and stops at the sentence end.
+ *   - "Ukrainian Job" ends in "Job". Stripping a trailing " job" from a parsed
+ *     name turns it into "Ukrainian", which matches nothing. Same family as
+ *     the "The Diamond" / "Diamond Heist" trap.
+ *   - "The Alesso Heist" is written "Complete the Alesso Heist" on its Normal
+ *     rung and "Complete The Alesso Heist" on the other six, so the leading
+ *     article is optional in BOTH cases.
+ *   - Conditional achievements over-match under a lazy capture: "Complete the
+ *     Framing Frame job on the OVERKILL difficulty or above with each crew
+ *     member using no skills..." reads as a second OVERKILL rung. Anchoring
+ *     the known name immediately before " on the" makes that impossible.
+ *
+ * "Death Sentence" has no "or above" - it is the top of this ladder.
+ */
+export function rungPattern(heistName, rung) {
+	const name = escapeRe(heistName.replace(/^The /, ''));
+	const tail = rung === 'Death Sentence' ? '' : ' or above';
+	return new RegExp(
+		`^Complete (?:[Tt]he )?${name}(?: job)? on the ${rung} difficulty${tail}(?:\\.|$)`,
+	);
+}
+
+/**
+ * The seven rung achievement ids for one heist, ascending.
+ *
+ * Throws rather than returning a partial ladder: a heist missing a rung means
+ * the pattern has drifted from Steam's wording, and silently emitting six
+ * rungs would understate every player's position on it forever.
+ */
+export function rungIdsFor(heistName, achievements) {
+	return LADDER_RUNGS.map((rung) => {
+		const re = rungPattern(heistName, rung);
+		const hits = achievements.filter((a) =>
+			re.test(normaliseDescription(a.description)),
+		);
+		if (hits.length !== 1) {
+			throw new Error(
+				`${heistName}: expected exactly one "${rung}" achievement, found ` +
+					`${hits.length}${hits.length ? ` (${hits.map((h) => h.id).join(', ')})` : ''}`,
+			);
+		}
+		return hits[0].id;
+	});
+}

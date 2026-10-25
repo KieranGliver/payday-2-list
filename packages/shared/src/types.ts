@@ -36,6 +36,28 @@ export type PerceivedDifficulty = (typeof DIFFICULTIES)[number];
 export const DAYS_VALUES = [1, 2, 3] as const;
 export type HeistDays = (typeof DAYS_VALUES)[number];
 
+/**
+ * The seven difficulty rungs below One Down, in ascending order.
+ *
+ * Every heist carries one achievement per rung, so a player's position on this
+ * ladder says how close they already are to the One Down clear. Note the gap
+ * between this and the One Down achievement itself: the plain Death Sentence
+ * achievements shipped in a later update and were never backfilled, so a
+ * player can hold One Down without holding Death Sentence.
+ *
+ * Used by the recommender only. Nothing on this ladder is shown in the UI.
+ */
+export const LADDER_RUNGS = [
+	'Normal',
+	'Hard',
+	'Very Hard',
+	'OVERKILL',
+	'Mayhem',
+	'Death Wish',
+	'Death Sentence',
+] as const;
+export type LadderRung = (typeof LADDER_RUNGS)[number];
+
 /** Facts that come from Steam. Regenerated; never hand-edited. */
 export interface SteamHeist {
 	/** Steam achievement `api_name` - the join key against GetPlayerAchievements. */

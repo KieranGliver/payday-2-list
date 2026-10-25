@@ -6,6 +6,9 @@ export {
 	type HeistId,
 	type MetaId,
 } from './generated/steam.js';
+// LADDER_IDS is for the API; LADDER_PCT for the recommender. Separate exports
+// so the browser build can drop the 602 achievement ids it never reads.
+export { LADDER_IDS, LADDER_PCT } from './generated/ladder.js';
 export { RATINGS } from './curated/ratings.js';
 export {
 	apiErrorSchema,
@@ -30,10 +33,12 @@ export {
 	APPROACHES,
 	DIFFICULTIES,
 	DAYS_VALUES,
+	LADDER_RUNGS,
 	type Contractor,
 	type Approach,
 	type PerceivedDifficulty,
 	type HeistDays,
+	type LadderRung,
 	type MetaAchievement,
 	type SteamHeist,
 	type Rating,

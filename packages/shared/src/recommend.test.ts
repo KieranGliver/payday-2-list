@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { recommend, topFactors, WEIGHTS } from './recommend.js';
+import {
+	recommend,
+	topFactors,
+	WEIGHTS,
+	type Recommendation,
+} from './recommend.js';
 import type { Badge } from './badges.js';
 import type { PlayerProgress } from './api.js';
 import type { Heist } from './types.js';
@@ -117,6 +122,36 @@ describe('recommend', () => {
 	});
 
 	describe('contractor proximity', () => {
+		/**
+		 * The real case this rule got wrong. Bain sits at 11/20 and The
+		 * Continental at 1/2, so by fraction Bain scores 0.55 against 0.50 and
+		 * the contractor NINE heists away outranks the one a single heist
+		 * away. Scoring on heists remaining puts that right.
+		 *
+		 * A fixture where the two rules happen to agree proves nothing here -
+		 * these numbers are chosen so they disagree on the order.
+		 */
+		it('prefers the contractor fewer heists from a badge, not the larger fraction', () => {
+			const rows = pair(
+				{ contractor: 'Bain' },
+				{ contractor: 'The Continental' },
+			);
+			const badges = [
+				badge({ contractor: 'Bain', done: 11, of: 20 }),
+				badge({ id: 'c', contractor: 'The Continental', done: 1, of: 2 }),
+			];
+			const recs = recommend(rows, PLAYERS, badges, { limit: 2 });
+			expect(recs[0]?.heist.contractor).toBe('The Continental');
+			expect(recs[0]?.factors.proximity).toBeCloseTo(1, 10);
+			expect(recs[1]?.factors.proximity).toBeCloseTo(1 / 9, 10);
+		});
+
+		it('scores a badge one heist away at the maximum', () => {
+			const rows = [heist({ id: 'a', contractor: 'Bain' })];
+			const one = [badge({ done: 3, of: 4 })];
+			expect(recommend(rows, PLAYERS, one)[0]?.factors.proximity).toBe(1);
+		});
+
 		// An earned badge has nothing left to win, so it must stop lifting its
 		// own heists above everything else.
 		it('stops counting once the badge is earned', () => {
@@ -319,6 +354,71 @@ describe('recommend', () => {
 				recs.find((r) => r.heist.id === id)?.factors.rarity;
 			expect(rarityOf(after, 'b')).toBe(rarityOf(open, 'b'));
 			expect(rarityOf(after, 'c')).toBe(rarityOf(open, 'c'));
+		});
+	});
+
+	describe('the casual-era discount', () => {
+		/**
+		 * Real ids, because the discount reads generated/ladder.ts. These two
+		 * are the case the discount exists for: Hoxton Breakout has the HIGHER
+		 * One Down figure, but 21.3% of all owners have beaten it on Normal
+		 * against The Biker Heist's 7.7%, so most of that figure is twelve
+		 * years of casual players rather than the heist being easier.
+		 *
+		 *   Hoxton Breakout  4.5% x (1 - 0.213) = 3.54
+		 *   The Biker Heist  4.2% x (1 - 0.077) = 3.88
+		 *
+		 * Without the discount the order is the other way round.
+		 */
+		const HOXTON_BREAKOUT = 'axe_34';
+		const BIKER_HEIST = 'axe_57';
+
+		const rarityOf = (recs: readonly Recommendation[], id: string) =>
+			recs.find((r) => r.heist.id === id)?.factors.rarity;
+
+		it('ranks a late heist above a launch heist with a higher raw figure', () => {
+			const rows = [
+				heist({
+					id: HOXTON_BREAKOUT,
+					heist: 'Hoxton Breakout',
+					globalPct: 4.5,
+				}),
+				heist({ id: BIKER_HEIST, heist: 'The Biker Heist', globalPct: 4.2 }),
+			];
+			const recs = recommend(rows, PLAYERS, [], { limit: 2 });
+			expect(recs[0]?.heist.id).toBe(BIKER_HEIST);
+			expect(rarityOf(recs, BIKER_HEIST)!).toBeGreaterThan(
+				rarityOf(recs, HOXTON_BREAKOUT)!,
+			);
+		});
+
+		// It must reorder the middle without inverting the scale: a genuinely
+		// high completion rate still beats a low one when both are late heists.
+		it('still ranks a higher figure first when exposure is comparable', () => {
+			const rows = [
+				heist({ id: BIKER_HEIST, heist: 'The Biker Heist', globalPct: 1 }),
+				heist({ id: 'fex_8', heist: "Buluc's Mansion", globalPct: 9 }),
+			];
+			expect(recommend(rows, PLAYERS, [], { limit: 2 })[0]?.heist.id).toBe(
+				'fex_8',
+			);
+		});
+
+		/**
+		 * A heist with no ladder data must keep its figure untouched. Reading a
+		 * missing entry as 0% played would hand it a x1.0 multiplier by luck;
+		 * reading it as 100% would erase the figure entirely. Both are wrong
+		 * for the same reason - no information is not a measurement.
+		 */
+		it('does not discount a heist with no ladder data', () => {
+			const rows = [
+				heist({ id: 'not_in_the_ladder', heist: 'A', globalPct: 9 }),
+				heist({ id: 'also_missing', heist: 'B', globalPct: 1 }),
+			];
+			const recs = recommend(rows, PLAYERS, [], { limit: 2 });
+			expect(recs[0]?.heist.id).toBe('not_in_the_ladder');
+			expect(rarityOf(recs, 'not_in_the_ladder')).toBe(1);
+			expect(rarityOf(recs, 'also_missing')).toBe(0);
 		});
 	});
 

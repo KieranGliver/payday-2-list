@@ -16,6 +16,12 @@ interface Props {
 	readonly loading: boolean;
 }
 
+/** 1-7 into LADDER_RUNGS; 0 means never completed on any difficulty. */
+const rung = (n: number) => LADDER_RUNGS[n - 1] ?? 'never';
+
+/** The furthest anyone has got. perPlayer is sorted furthest-first. */
+const best = (rec: Recommendation) => rec.perPlayer[0]?.rung;
+
 /**
  * Why a heist is here, in words someone can act on.
  *
@@ -31,9 +37,25 @@ function reasonFor(rec: Recommendation, term: keyof Factors): string | null {
 	const h = rec.heist;
 	switch (term) {
 		case 'closeness': {
-			// rung is 1-7 into LADDER_RUNGS; 0 and undefined have nothing to say.
-			const name = rec.rung ? LADDER_RUNGS[rec.rung - 1] : undefined;
-			return name ? `you have both already beaten it on ${name}` : null;
+			const low = rec.rung;
+			const top = best(rec);
+			if (low === undefined || top === undefined || top === 0) return null;
+			// Everyone level: one claim covers the pair.
+			if (low === top) {
+				return `you have both already beaten it on ${rung(low)}`;
+			}
+			// Otherwise name each of you with your OWN level. Saying "you have
+			// both done Death Wish" when one has taken it to Death Sentence
+			// reports the pair as less ready than it is.
+			return rec.perPlayer
+				.map((p, i) =>
+					p.rung === 0
+						? `${p.name} has never finished it`
+						: i === 0
+							? `${p.name} has taken it to ${rung(p.rung)}`
+							: `${p.name} to ${rung(p.rung)}`,
+				)
+				.join(', ');
 		}
 		case 'rarity':
 			return `plenty of other players have finished it (${h.globalPct.toFixed(1)}%)`;
@@ -63,11 +85,19 @@ function reasonAgainst(
 ): string | null {
 	const h = rec.heist;
 	switch (term) {
-		case 'closeness':
-			if (rec.rung === undefined) return null;
-			return rec.rung === 0
-				? 'neither of you has ever finished it'
-				: `you have only got to ${LADDER_RUNGS[rec.rung - 1]} on it`;
+		case 'closeness': {
+			const low = rec.rung;
+			const top = best(rec);
+			if (low === undefined || top === undefined) return null;
+			// Nobody has touched it only if the furthest of you has not either.
+			if (top === 0) return 'neither of you has ever finished it';
+			if (low === 0) {
+				return `only ${rec.perPlayer[0]!.name} has ever finished it`;
+			}
+			return low === top
+				? `you have only got to ${rung(low)} on it`
+				: `${rec.perPlayer.at(-1)!.name} has only got to ${rung(low)}`;
+		}
 		case 'rarity':
 			return `hardly anyone finishes it (${h.globalPct.toFixed(1)}%)`;
 		case 'ease':

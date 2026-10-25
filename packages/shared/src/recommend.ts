@@ -93,11 +93,19 @@ export interface Recommendation {
 	 */
 	readonly partial: boolean;
 	/**
-	 * The rung both players have reached, 1-7 into LADDER_RUNGS, or 0 for
-	 * none. `undefined` means unknown, which is not the same as 0 - so the UI
-	 * can name the difficulty we got to rather than describing a score.
+	 * The rung EVERY player has reached, 1-7 into LADDER_RUNGS, or 0 for none.
+	 * `undefined` means unknown, which is not the same as 0 - so the UI can
+	 * name the difficulty we got to rather than describing a score.
 	 */
 	readonly rung: number | undefined;
+	/**
+	 * Every readable player's own rung, furthest first.
+	 *
+	 * The per-player breakdown rather than just a shared floor, so the reason
+	 * can name who has taken a heist how far instead of flattening two
+	 * different standings into the lower one. Empty when nobody is readable.
+	 */
+	readonly perPlayer: readonly PlayerStanding[];
 	/**
 	 * Heists left before this contractor's badge is earned, or null when there
 	 * is no badge to earn. Lets the reason say "2 left to finish Vlad" instead
@@ -187,25 +195,70 @@ function rarityScale(
 	);
 }
 
+/** One player's position on one heist's ladder. */
+export interface PlayerStanding {
+	readonly name: string;
+	/** 1-7 into LADDER_RUNGS, or 0 for never completed on any difficulty. */
+	readonly rung: number;
+}
+
+/** Where the whole crew stands on one heist's ladder. */
+interface Standing {
+	/** The rung EVERY player has reached. Keeps a "you have both" claim true. */
+	readonly lowest: number | undefined;
+	/** Each readable player, furthest first. */
+	readonly perPlayer: readonly PlayerStanding[];
+	/** Readiness, 0-1. */
+	readonly closeness: number;
+}
+
 /**
- * The highest rung BOTH players have reached, or undefined if nobody's data
- * could be read.
+ * How ready the pair is for one heist.
  *
- * The MINIMUM across players, not the average: a heist one of us has cleared
- * on Death Wish and the other has never loaded is not a heist we are nearly
- * done with. A player whose read failed is left out of the minimum entirely
- * rather than counted as rung 0 - unknown is not zero, and treating it as zero
- * would drag every heist's closeness down whenever a profile goes private.
+ * The LOWEST rung counts double and every other player once, so the least
+ * experienced half still dominates - a heist one of us has never loaded is
+ * not a heist we are nearly done with - WITHOUT discarding what the other one
+ * knows.
+ *
+ * The earlier rule was a plain minimum, which discarded it entirely. On the
+ * real catalog that was not a corner case: the two of us sit at different
+ * rungs on 21 of the 59 heists left, including Aftershock, which yogizmo has
+ * cleared on Death Sentence and the old rule scored as though nobody had ever
+ * played it.
+ *
+ * A player whose read failed is left out entirely rather than counted as rung
+ * 0 - unknown is not zero, and treating it as zero would drag every heist's
+ * closeness down whenever a profile goes private.
  */
-function sharedRung(
+function standingOn(
 	players: readonly PlayerProgress[],
 	heistId: string,
-): number | undefined {
-	const rungs = players
-		.map((p) => ladderRung(p, heistId))
-		.filter((r): r is number => r !== undefined);
+): Standing {
+	const known = players
+		.map((p) => ({ name: p.name, rung: ladderRung(p, heistId) }))
+		.filter((x): x is { name: string; rung: number } => x.rung !== undefined);
 
-	return rungs.length === 0 ? undefined : Math.min(...rungs);
+	if (known.length === 0) {
+		return { lowest: undefined, perPlayer: [], closeness: 0 };
+	}
+
+	const rungs = known.map((x) => x.rung);
+	const lowest = Math.min(...rungs);
+
+	// Counting `lowest` a second time is what gives it double weight, and
+	// dividing by length + 1 keeps the result inside 0..LADDER_RUNGS.length.
+	const weighted =
+		(rungs.reduce((a, b) => a + b, 0) + lowest) / (rungs.length + 1);
+
+	return {
+		lowest,
+		// Furthest first, so the reason leads with whoever knows it best.
+		// Name breaks ties, keeping the sentence stable between renders.
+		perPlayer: [...known].sort(
+			(a, b) => b.rung - a.rung || a.name.localeCompare(b.name, 'en'),
+		),
+		closeness: weighted / LADDER_RUNGS.length,
+	};
 }
 
 /**
@@ -245,12 +298,12 @@ function scoreAll(
 	return catalog
 		.filter((h) => !(ok.length > 0 && ok.every((p) => hasCleared(p, h.id))))
 		.map((heist): Recommendation => {
-			const rung = sharedRung(players, heist.id);
+			const standing = standingOn(players, heist.id);
 			const badge = contractorBadge(badges, heist);
 
 			const factors: Factors = {
 				rarity: rarity.get(heist.id) ?? 0,
-				closeness: (rung ?? 0) / LADDER_RUNGS.length,
+				closeness: standing.closeness,
 				ease: EASE[heist.perceivedDifficulty],
 				proximity: badge ? 1 / (badge.of - badge.done) : 0,
 				brevity: BREVITY[heist.days],
@@ -271,7 +324,8 @@ function scoreAll(
 				factors,
 				contributions,
 				partial,
-				rung,
+				rung: standing.lowest,
+				perPlayer: standing.perPlayer,
 				contractorLeft: badge ? badge.of - badge.done : null,
 			};
 		});

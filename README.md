@@ -106,10 +106,9 @@ than hide it.
 
 ## Deploying
 
-Push to `master`. CI runs typecheck, lint, format, tests, both builds and a
-catalog-freshness check; only if it passes does the deploy workflow run, which
-syncs the SPA to S3 and updates the Lambda. `master` is protected and requires
-a PR with CI green.
+Push to `master`. CI runs typecheck, lint, format, tests and both builds; only
+if it passes does the deploy workflow run, which syncs the SPA to S3 and
+updates the Lambda. `master` is protected and requires a PR with CI green.
 
 AWS access uses GitHub OIDC — there are no long-lived credentials anywhere.
 See [`infra/README.md`](infra/README.md) for the resources and how to rebuild

@@ -1,6 +1,7 @@
 import {
 	APPROACHES,
 	CONTRACTORS,
+	DAYS_VALUES,
 	DIFFICULTIES,
 	type PlayerProgress,
 } from '@pd2/shared';
@@ -8,6 +9,7 @@ import {
 	toApproach,
 	toCompletion,
 	toContractor,
+	toDays,
 	toDifficulty,
 	type FilterState,
 } from '@/lib/filters';
@@ -38,7 +40,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
 	return (
 		<section
 			aria-label="Filters"
-			className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+			className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
 		>
 			<label className="flex flex-col gap-1">
 				<span className="text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
@@ -105,6 +107,27 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
 
 			<label className="flex flex-col gap-1">
 				<span className="text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+					Days
+				</span>
+				<select
+					className={field}
+					value={value.days}
+					onChange={(e) => set('days', toDays(e.target.value))}
+				>
+					<option value="all">All</option>
+					{DAYS_VALUES.map((d) => (
+						<option
+							key={d}
+							value={d}
+						>
+							{d} day{d === 1 ? '' : 's'}
+						</option>
+					))}
+				</select>
+			</label>
+
+			<label className="flex flex-col gap-1">
+				<span className="text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
 					Completion
 				</span>
 				<select
@@ -129,7 +152,7 @@ export function Filters({ value, onChange, players, shown, total }: Props) {
 				</select>
 			</label>
 
-			<p className="col-span-2 text-xs text-muted-foreground tabular-nums sm:col-span-4">
+			<p className="col-span-2 text-xs text-muted-foreground tabular-nums sm:col-span-3 lg:col-span-5">
 				Showing {shown} of {total} heists
 			</p>
 		</section>

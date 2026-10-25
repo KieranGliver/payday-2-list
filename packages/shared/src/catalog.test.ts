@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { BY_ID, CATALOG } from './catalog.js';
+import { DAYS } from './curated/days.js';
 import { RATINGS } from './curated/ratings.js';
 import { STEAM_HEISTS } from './generated/steam.js';
-import { CONTRACTORS, APPROACHES, DIFFICULTIES } from './types.js';
+import { CONTRACTORS, APPROACHES, DAYS_VALUES, DIFFICULTIES } from './types.js';
 
 /**
  * Invariants on the generated catalog.
@@ -70,6 +71,21 @@ describe('CATALOG', () => {
 			expect(CONTRACTORS).toContain(h.contractor);
 			expect(APPROACHES).toContain(h.approach);
 			expect(DIFFICULTIES).toContain(h.perceivedDifficulty);
+			expect(DAYS_VALUES).toContain(h.days);
+		}
+	});
+
+	// Same guard as RATINGS: Record<HeistId, HeistDays> catches a missing or
+	// mistyped key at compile time, but not an entry left behind after a heist
+	// is renamed upstream.
+	it('every heist has a researched day count, and no extras', () => {
+		const ids = new Set(CATALOG.map((h) => h.id));
+		expect(Object.keys(DAYS)).toHaveLength(CATALOG.length);
+		for (const id of Object.keys(DAYS)) {
+			expect(
+				ids.has(id as never),
+				`${id} has a day count but is not in the catalog`,
+			).toBe(true);
 		}
 	});
 

@@ -16,6 +16,7 @@ const heist = (over: Partial<Heist>): Heist => ({
 	contractor: 'Bain',
 	approach: 'LOUD',
 	perceivedDifficulty: 'MEDIUM',
+	days: 1,
 	...over,
 });
 
@@ -53,6 +54,23 @@ describe('sortHeists', () => {
 			'MEDIUM',
 			'HARD',
 		]);
+	});
+
+	/**
+	 * 'days' needs an explicit case in value(): the switch's default arm reads
+	 * the key as `player:<steamId>`, so a missing case would slice 'days' into
+	 * a steamId, find no player, and sort every row to -1 - a column that
+	 * silently does nothing.
+	 */
+	it('sorts days ascending, shortest first', () => {
+		const rows = [
+			heist({ id: '1', heist: 'A', days: 3 }),
+			heist({ id: '2', heist: 'B', days: 1 }),
+			heist({ id: '3', heist: 'C', days: 2 }),
+		];
+		const sorted = sortHeists(rows, { key: 'days', desc: false }, []);
+		expect(sorted.map((h) => h.days)).toEqual([1, 2, 3]);
+		expect(names(sorted)).toEqual(['B', 'C', 'A']);
 	});
 
 	it('reverses on desc', () => {

@@ -1,11 +1,13 @@
 import {
 	APPROACHES,
 	CONTRACTORS,
+	DAYS_VALUES,
 	DIFFICULTIES,
 	hasCleared,
 	type Approach,
 	type Contractor,
 	type Heist,
+	type HeistDays,
 	type PerceivedDifficulty,
 	type PlayerProgress,
 } from '@pd2/shared';
@@ -17,6 +19,7 @@ export interface FilterState {
 	readonly contractor: Contractor | 'all';
 	readonly approach: Approach | 'all';
 	readonly difficulty: PerceivedDifficulty | 'all';
+	readonly days: HeistDays | 'all';
 	readonly completion: Completion;
 }
 
@@ -36,6 +39,20 @@ const oneOf =
 export const toContractor = oneOf(CONTRACTORS);
 export const toApproach = oneOf(APPROACHES);
 export const toDifficulty = oneOf(DIFFICULTIES);
+
+/**
+ * Days needs its own narrower: `oneOf` is constrained to `T extends string`,
+ * and keeping the state numeric is what lets the predicate stay a same-typed
+ * `h.days === f.days` comparison like the other three, rather than coercing
+ * with String() at the point of comparison.
+ *
+ * Matches the string forms rather than going through Number(), which has a
+ * trap at every edge: Number('') is 0, Number(' 2 ') is 2, and Number('1e0')
+ * is 1 - so a numeric parse accepts spellings no <option> ever emits. Nothing
+ * but '1', '2' and '3' survives this.
+ */
+export const toDays = (value: string): HeistDays | 'all' =>
+	DAYS_VALUES.find((d) => String(d) === value) ?? 'all';
 
 /**
  * `only:<steamId>` is only meaningful while that player is still configured.
@@ -67,6 +84,7 @@ export const INITIAL_FILTERS: FilterState = {
 	contractor: 'all',
 	approach: 'all',
 	difficulty: 'all',
+	days: 'all',
 	completion: 'all',
 };
 
@@ -105,6 +123,7 @@ export function applyFilters(
 			(f.contractor === 'all' || h.contractor === f.contractor) &&
 			(f.approach === 'all' || h.approach === f.approach) &&
 			(f.difficulty === 'all' || h.perceivedDifficulty === f.difficulty) &&
+			(f.days === 'all' || h.days === f.days) &&
 			matchesCompletion(h, players, f.completion),
 	);
 }

@@ -26,6 +26,16 @@ export type Approach = (typeof APPROACHES)[number];
 export const DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD'] as const;
 export type PerceivedDifficulty = (typeof DIFFICULTIES)[number];
 
+/**
+ * How many in-game days a heist runs.
+ *
+ * Three is the longest Overkill ever shipped (Rats, Firestarter, Framing
+ * Frame), so this is a closed union rather than a plain number - a curated
+ * typo lands as a compile error instead of a nonsense column.
+ */
+export const DAYS_VALUES = [1, 2, 3] as const;
+export type HeistDays = (typeof DAYS_VALUES)[number];
+
 /** Facts that come from Steam. Regenerated; never hand-edited. */
 export interface SteamHeist {
 	/** Steam achievement `api_name` - the join key against GetPlayerAchievements. */
@@ -72,4 +82,11 @@ export interface Rating {
 }
 
 /** A heist with Steam's facts and our judgements joined. */
-export interface Heist extends SteamHeist, Rating {}
+export interface Heist extends SteamHeist, Rating {
+	/**
+	 * Hand-researched, and neither a Steam fact nor a judgement - it is in
+	 * curated/days.ts because Steam's schema does not carry it, not because it
+	 * is an opinion.
+	 */
+	readonly days: HeistDays;
+}
